@@ -21,16 +21,5 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    
-    path('', include('accounts.urls')),          #pag principal y autenticacion
-    path('flights/', include('apps.flights.urls')),    
-    path('passengers/', include('apps.passengers.urls')), 
-    path('reservations/', include('apps.reservations.urls')), 
-    path('reports/', include('apps.reports.urls')), 
-    path('auth/', include('django.contrib.auth.urls')), #autenticacion
-]
 
-#archivos media en desarrollo
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+]

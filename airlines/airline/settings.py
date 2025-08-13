@@ -43,11 +43,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     #Apps de la aerolinea
-    'accounts',
-    'flights',
-    'passengers',
-    'reports',
-    'reservations',
+    'apps.accounts',
+    'apps.flights.apps.FlightsConfig',
+    'apps.passengers.apps.PassengersConfig',
+    'apps.reports',
+    'apps.reservations',
 ]
 
 MIDDLEWARE = [
