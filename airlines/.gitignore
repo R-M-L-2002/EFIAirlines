@@ -19,6 +19,8 @@ db.sqlite3
 # Archivos de entorno
 .env
 *.env
+.venv
+*.venv
 
 # Archivos de configuración locales
 *.vscode/
