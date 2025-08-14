@@ -1,0 +1,325 @@
+{% extends 'base.html' %}
+
+{% block title %}New Reservation - {{ flight.flight_number }} - Virtual Airline{% endblock %}
+
+{% block extra_css %}
+<style>
+    .seat {
+        width: 40px;
+        height: 40px;
+        margin: 3px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    .seat.available {
+        background-color: #d4edda;
+        border-color: #28a745;
+        color: #155724;
+    }
+    .seat.available:hover {
+        background-color: #c3e6cb;
+        transform: scale(1.1);
+    }
+    .seat.occupied {
+        background-color: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+        cursor: not-allowed;
+    }
+    .seat.selected {
+        background-color: #007bff;
+        border-color: #0056b3;
+        color: white;
+        transform: scale(1.1);
+    }
+    .seat.first {
+        border-width: 3px;
+    }
+    .seat.business {
+        border-style: dashed;
+    }
+    .row-seat {
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .row-number {
+        width: 40px;
+        text-align: center;
+        font-weight: bold;
+        margin-right: 15px;
+    }
+    .aisle {
+        width: 30px;
+    }
+    .seat-info {
+        position: fixed;
+        top: 50%;
+        right: 20px;
+        transform: translateY(-50%);
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        min-width: 250px;
+        z-index: 1000;
+    }
+    .seat-map {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 30px;
+        margin: 20px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'core:home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'flights:list' %}">Flights</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'flights:detail' flight.id %}">{{ flight.flight_number }}</a></li>
+                <li class="breadcrumb-item active">New Reservation</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Flight Information -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">
+                    <i class="fas fa-ticket-alt"></i> New Reservation - {{ flight.flight_number }}
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-route"></i> Flight Details</h5>
+                        <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                            <div class="text-center">
+                                <h5 class="text-success">{{ flight.origin }}</h5>
+                                <small>{{ flight.departure_date|date:"m/d/Y H:i" }}</small>
+                            </div>
+                            <div class="text-center">
+                                <i class="fas fa-plane fa-2x text-primary"></i>
+                            </div>
+                            <div class="text-center">
+                                <h5 class="text-danger">{{ flight.destination }}</h5>
+                                <small>{{ flight.arrival_date|date:"m/d/Y H:i" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-user"></i> Passenger Information</h5>
+                        <div class="p-3 bg-light rounded">
+                            <p class="mb-1"><strong>Name:</strong> {{ passenger.name }}</p>
+                            <p class="mb-1"><strong>Document:</strong> {{ passenger.get_document_type_display }}: {{ passenger.document }}</p>
+                            <p class="mb-0"><strong>Email:</strong> {{ passenger.email }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Seat Selection -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-th"></i> Select Your Seat
+                    <small class="text-muted">({{ total_available }} available)</small>
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Legend -->
+                <div class="mb-4">
+                    <h6>Legend:</h6>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="d-flex align-items-center">
+                            <div class="seat available me-2">1A</div>
+                            <span>Available</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="seat occupied me-2">1B</div>
+                            <span>Occupied</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="seat selected me-2">1C</div>
+                            <span>Selected</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="seat available first me-2">1D</div>
+                            <span>First Class ($$$)</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="seat available business me-2">5A</div>
+                            <span>Business ($$)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Seat Map -->
+                <div class="seat-map text-center">
+                    <div class="mb-3">
+                        <strong><i class="fas fa-plane"></i> FRONT OF THE PLANE</strong>
+                    </div>
+                    
+                    <form method="post" id="reservationForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="selected_seat" id="selectedSeat">
+                        
+                        {% for row, seats in seats_by_row.items %}
+                        <div class="row-seat">
+                            <div class="row-number">{{ row }}</div>
+                            {% for seat_info in seats %}
+                                {% if forloop.counter == 3 %}
+                                    <div class="aisle"></div>
+                                {% endif %}
+                                <div class="seat {% if seat_info.available %}available{% else %}occupied{% endif %} {{ seat_info.seat.type }}"
+                                     data-seat-id="{{ seat_info.seat.id }}"
+                                     data-price="{{ seat_info.price }}"
+                                     data-type="{{ seat_info.seat.get_type_display }}"
+                                     data-number="{{ seat_info.seat.number }}"
+                                     {% if seat_info.available %}onclick="selectSeat(this)"{% endif %}
+                                     title="Seat {{ seat_info.seat.number }} - {{ seat_info.seat.get_type_display }} - ${{ seat_info.price|floatformat:0 }}">
+                                    {{ seat_info.seat.number }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="mt-4">
+                            <div class="mb-3">
+                                <label for="remarks" class="form-label">Remarks (optional)</label>
+                                <textarea name="remarks" id="remarks" class="form-control" rows="2" 
+                                          placeholder="Special requests, medical needs, etc."></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success btn-lg" id="btnReserve" disabled>
+                                <i class="fas fa-check"></i> Create Reservation
+                            </button>
+                            <a href="{% url 'flights:detail' flight.id %}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Seat Information Panel -->
+    <div class="col-lg-4">
+        <div class="card sticky-top" style="top: 20px;">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Seat Information
+                </h5>
+            </div>
+            <div class="card-body" id="seatInfo">
+                <div class="text-center text-muted">
+                    <i class="fas fa-hand-pointer fa-3x mb-3"></i>
+                    <p>Select a seat to view details</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedSeatElement = null;
+
+function selectSeat(element) {
+    // First check seat availability
+    checkAvailability(element.dataset.seatId, function(isAvailable) {
+        if (!isAvailable) {
+            return;
+        }
+        
+        // Deselect previous seat if any
+        if (selectedSeatElement) {
+            selectedSeatElement.classList.remove('selected');
+        }
+        
+        // Select new seat
+        element.classList.add('selected');
+        selectedSeatElement = element;
+        
+        // Update form field
+        document.getElementById('selectedSeat').value = element.dataset.seatId;
+        
+        // Enable reserve button
+        document.getElementById('btnReserve').disabled = false;
+        
+        // Update info panel
+        updateSeatInfo(element);
+    });
+}
+
+function updateSeatInfo(element) {
+    const infoPanel = document.getElementById('seatInfo');
+    const price = parseFloat(element.dataset.price);
+    
+    infoPanel.innerHTML = `
+        <div class="text-center">
+            <div class="seat ${element.classList[1]} ${element.classList[2]} mb-3" 
+                 style="font-size: 16px; width: 60px; height: 60px;">
+                ${element.dataset.number}
+            </div>
+            <h5>Seat ${element.dataset.number}</h5>
+            <p class="mb-2"><strong>Class:</strong> ${element.dataset.type}</p>
+            <h4 class="text-success mb-3">$${price.toLocaleString('en-US')}</h4>
+            
+            <div class="alert alert-info">
+                <small>
+                    <i class="fas fa-info-circle"></i>
+                    ${getClassInfo(element.classList[2])}
+                </small>
+            </div>
+        </div>
+    `;
+}
+
+function getClassInfo(className) {
+    switch(className) {
+        case 'first':
+            return 'Includes: Gourmet meal, premium drinks, reclining seat, extra baggage.';
+        case 'business':
+            return 'Includes: Enhanced meal, drinks, comfortable seat, additional baggage.';
+        case 'economy':
+            return 'Includes: Snack, drink, standard carry-on baggage.';
+        default:
+            return 'Standard class.';
+    }
+}
+
+// Initialize any seat click handlers
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.seat.available').forEach(seat => {
+        seat.addEventListener('click', function() {
+            selectSeat(this);
+        });
+    });
+});
+</script>
+{% endblock %}

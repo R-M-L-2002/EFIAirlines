@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Passenger Report - {{ flight.origin }} to {{ flight.destination }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'reports:dashboard' %}">Reports</a></li>
+                    <li class="breadcrumb-item active">Flight Passengers</li>
+                </ol>
+            </nav>
+            
+            <h1 class="h2 mb-0">
+                <i class="fas fa-users me-2"></i>Flight Passengers
+            </h1>
+            <p class="text-muted">{{ flight.origin }} → {{ flight.destination }} | {{ flight.departure_date|date:"d/m/Y H:i" }}</p>
+        </div>
+    </div>
+
+    <!-- Flight Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3>{{ total_reservations }}</h3>
+                    <p class="mb-0">Total Reservations</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3>{{ confirmed_reservations }}</h3>
+                    <p class="mb-0">Confirmed</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h3>{{ occupancy_percentage }}%</h3>
+                    <p class="mb-0">Occupancy</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h3>${{ total_revenue|floatformat:0 }}</h3>
+                    <p class="mb-0">Revenue</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4>Passenger List</h4>
+                <a href="?export=csv" class="btn btn-success">
+                    <i class="fas fa-file-csv me-1"></i>Export CSV
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Passenger List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Seat</th>
+                                    <th>Passenger</th>
+                                    <th>Document</th>
+                                    <th>Contact</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Price</th>
+                                    <th>Reservation Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reservation in reservations %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ reservation.seat.number }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ reservation.passenger.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ reservation.passenger.age }} years old</small>
+                                    </td>
+                                    <td>
+                                        {{ reservation.passenger.document_type }}: {{ reservation.passenger.document }}
+                                    </td>
+                                    <td>
+                                        <div>{{ reservation.passenger.email }}</div>
+                                        <small class="text-muted">{{ reservation.passenger.phone }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ reservation.seat.get_type_display }}</span>
+                                    </td>
+                                    <td>
+                                        {% if reservation.status == 'paid' %}
+                                            <span class="badge bg-success">{{ reservation.get_status_display }}</span>
+                                        {% elif reservation.status == 'confirmed' %}
+                                            <span class="badge bg-primary">{{ reservation.get_status_display }}</span>
+                                        {% elif reservation.status == 'pending' %}
+                                            <span class="badge bg-warning">{{ reservation.get_status_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ reservation.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>${{ reservation.price|floatformat:0 }}</strong>
+                                    </td>
+                                    <td>
+                                        {{ reservation.reservation_date|date:"d/m/Y H:i" }}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <br>
+                                        No reservations for this flight
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seat Type Distribution -->
+    {% if seat_distribution %}
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Seat Type Distribution</h5>
+                </div>
+                <div class="card-body">
+                    {% for item in seat_distribution %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>{{ item.seat__type|capfirst }}</span>
+                        <span class="badge bg-primary">{{ item.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

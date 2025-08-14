@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}My Reservations - Virtual Airline{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-ticket-alt"></i> My Reservations
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row mb-4">
+    <div class="col-md-2 col-6 mb-3">
+        <div class="card text-center bg-primary text-white">
+            <div class="card-body">
+                <h4>{{ stats.total }}</h4>
+                <small>Total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-6 mb-3">
+        <div class="card text-center bg-warning text-dark">
+            <div class="card-body">
+                <h4>{{ stats.pending }}</h4>
+                <small>Pending</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-6 mb-3">
+        <div class="card text-center bg-success text-white">
+            <div class="card-body">
+                <h4>{{ stats.confirmed }}</h4>
+                <small>Confirmed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-6 mb-3">
+        <div class="card text-center bg-info text-white">
+            <div class="card-body">
+                <h4>{{ stats.completed }}</h4>
+                <small>Completed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-6 mb-3">
+        <div class="card text-center bg-danger text-white">
+            <div class="card-body">
+                <h4>{{ stats.canceled }}</h4>
+                <small>Canceled</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 col-6 mb-3">
+        <div class="card text-center bg-light">
+            <div class="card-body">
+                <a href="{% url 'flights:list' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-plus"></i><br>
+                    <small>New Reservation</small>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="status" class="form-label">Filter by Status</label>
+                        <select name="status" id="status" class="form-control">
+                            <option value="">All statuses</option>
+                            {% for value, name in reservation_statuses %}
+                            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>
+                                {{ name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Filter
+                        </button>
+                        <a href="{% url 'reservations:my_reservations' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reservations List -->
+<div class="row">
+    {% for reservation in page_obj %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>{{ reservation.reservation_code }}</strong>
+                <span class="badge bg-{% if reservation.status == 'confirmed' or reservation.status == 'paid' %}success{% elif reservation.status == 'pending' %}warning{% elif reservation.status == 'canceled' %}danger{% elif reservation.status == 'completed' %}info{% else %}secondary{% endif %}">
+                    {{ reservation.get_status_display }}
+                </span>
+            </div>
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-plane"></i> {{ reservation.flight.flight_number }}
+                </h6>
+                <p class="card-text">
+                    <strong>{{ reservation.flight.origin }}</strong> → <strong>{{ reservation.flight.destination }}</strong>
+                </p>
+                <p class="card-text">
+                    <i class="fas fa-calendar"></i> {{ reservation.flight.departure_date|date:"d/m/Y H:i" }}
+                </p>
+                <p class="card-text">
+                    <i class="fas fa-chair"></i> Seat {{ reservation.seat.number }} ({{ reservation.seat.get_type_display }})
+                </p>
+                <p class="card-text">
+                    <strong class="text-success">${{ reservation.price|floatformat:0 }}</strong>
+                </p>
+                <p class="card-text">
+                    <small class="text-muted">
+                        Booked: {{ reservation.booking_date|date:"d/m/Y H:i" }}
+                    </small>
+                </p>
+            </div>
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'reservations:detail' reservation.reservation_code %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-eye"></i> View Details
+                    </a>
+                    {% if reservation.status == 'pending' %}
+                    <a href="{% url 'reservations:confirm' reservation.reservation_code %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-check"></i> Confirm
+                    </a>
+                    {% elif reservation.can_cancel %}
+                    <a href="{% url 'reservations:cancel' reservation.reservation_code %}" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle fa-2x mb-3"></i>
+            <h4>You have no reservations</h4>
+            <p>It's time to plan your next trip!</p>
+            <a href="{% url 'flights:list' %}" class="btn btn-primary">
+                <i class="fas fa-search"></i> Search Flights
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="row mt-4">
+    <div class="col-12">
+        <nav aria-label="Reservations navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">
+                        {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

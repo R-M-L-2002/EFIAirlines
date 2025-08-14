@@ -1,10 +1,10 @@
 """
-Views for the core app.
+Vistas para la aplicacion core.
 
-This file contains:
-- Home view
-- Authentication views (login, register, logout)
-- User profile views
+Este archivo contiene:
+- Vista home
+- Vistas de autenticacion (login, registro, logout)
+- Vistas de perfil de usuario
 """
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
@@ -16,56 +16,56 @@ from django.urls import reverse
 from django.http import JsonResponse
 from django.utils import timezone
 
-from .forms import RegistroUsuarioForm, LoginForm, PerfilUsuarioForm, PasajeroForm
-from apps.flights.models import Vuelo
-from apps.passengers.models import Pasajero
-from apps.reservations.models import Reserva
+from .forms import UserRegisterForm, LoginForm, UserProfileForm, PassengerForm
+from apps.flights.models import Flight
+from apps.passengers.models import Passenger
+from apps.reservations.models import Reservation
 
 
 def home(request):
     """
-    Main site view.
-    Shows general info and featured flights.
+    Vista principal del sitio.
+    Muestra informacion general y vuelos destacados.
     """
-    # Get upcoming flights (next 5)
-    vuelos_proximos = Vuelo.objects.filter(
-        estado='programmed'
-    ).order_by('fecha_salida')[:5]
+    # Obtener vuelos proximos (proximos 5)
+    upcoming_flights = Flight.objects.filter(
+        status='programmed'
+    ).order_by('departure_date')[:5]
     
-    # General stats
-    total_vuelos = Vuelo.objects.count()
-    total_pasajeros = Pasajero.objects.filter(activo=True).count()
-    total_reservas = Reserva.objects.filter(
-        estado__in=['confirmed', 'paid']
+    # Estadisticas generales
+    total_flights = Flight.objects.count()
+    total_passengers = Passenger.objects.filter(active=True).count()
+    total_reservations = Reservation.objects.filter(
+        status__in=['confirmed', 'paid']
     ).count()
     
     context = {
-        'vuelos_proximos': vuelos_proximos,
-        'total_vuelos': total_vuelos,
-        'total_pasajeros': total_pasajeros,
-        'total_reservas': total_reservas,
+        'upcoming_flights': upcoming_flights,
+        'total_flights': total_flights,
+        'total_passengers': total_passengers,
+        'total_reservations': total_reservations,
     }
     
     return render(request, 'accounts/home.html', context)
 
 
-def registro_usuario(request):
+def user_registration(request):
     """
-    User registration view.
+    Vista de registro de usuario.
     """
     if request.user.is_authenticated:
         messages.info(request, 'You are already logged in.')
         return redirect('core:home')
     
     if request.method == 'POST':
-        form = RegistroUsuarioForm(request.POST)
+        form = UserRegisterForm(request.POST)
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # Create user
+                    # Crear usuario
                     user = form.save()
                     
-                    # Authenticate and log in
+                    # Autenticar y loguear
                     username = form.cleaned_data.get('username')
                     password = form.cleaned_data.get('password')
                     user = authenticate(username=username, password=password)
@@ -76,21 +76,21 @@ def registro_usuario(request):
                             request, 
                             f'Welcome {user.first_name}! Your account has been created successfully.'
                         )
-                        return redirect('core:completar_perfil')
+                        return redirect('core:complete_profile')
                     
             except Exception:
                 messages.error(request, 'Error creating account. Please try again.')
         else:
             messages.error(request, 'Please correct the errors in the form.')
     else:
-        form = RegistroUsuarioForm()
+        form = UserRegisterForm()
     
-    return render(request, 'registration/registro.html', {'form': form})
+    return render(request, 'registration/register.html', {'form': form})
 
 
-def login_usuario(request):
+def user_login(request):
     """
-    Custom login view.
+    Vista de inicio de sesion personalizada.
     """
     if request.user.is_authenticated:
         return redirect('core:home')
@@ -106,7 +106,7 @@ def login_usuario(request):
                 login(request, user)
                 messages.success(request, f'Welcome back, {user.first_name}!')
                 
-                # Redirect to next page or home
+                # Redirigir a la siguiente pagina o al home
                 next_page = request.GET.get('next', 'core:home')
                 return redirect(next_page)
             else:
@@ -119,90 +119,90 @@ def login_usuario(request):
     return render(request, 'registration/login.html', {'form': form})
 
 
-def logout_usuario(request):
+def user_logout(request):
     """
-    Logout view.
+    Vista de cierre de sesion.
     """
     if request.user.is_authenticated:
-        nombre = request.user.first_name or request.user.username
+        name = request.user.first_name or request.user.username
         logout(request)
-        messages.success(request, f'Goodbye, {nombre}!')
+        messages.success(request, f'Goodbye, {name}!')
     
     return redirect('core:home')
 
 
 @login_required
-def perfil_usuario(request):
+def user_profile(request):
     """
-    View to display and edit user profile.
+    Vista para mostrar y editar el perfil de usuario.
     """
-    # Get or create passenger profile
+    # Obtener o crear perfil de pasajero
     try:
-        pasajero = Pasajero.objects.get(email=request.user.email)
-    except Pasajero.DoesNotExist:
-        pasajero = None
+        passenger = Passenger.objects.get(email=request.user.email)
+    except Passenger.DoesNotExist:
+        passenger = None
     
-    # Get user reservations
-    reservas = []
-    if pasajero:
-        reservas = pasajero.reservas.all().order_by('-fecha_reserva')[:5]
+    # Obtener reservas del usuario
+    reservations = []
+    if passenger:
+        reservations = passenger.reservations.all().order_by('-reservation_date')[:5]
     
     context = {
-        'pasajero': pasajero,
-        'reservas': reservas,
+        'passenger': passenger,
+        'reservations': reservations,
     }
     
-    return render(request, 'accounts/perfil.html', context)
+    return render(request, 'accounts/profile.html', context)
 
 
 @login_required
-def editar_perfil(request):
+def edit_profile(request):
     """
-    Edit user profile view.
+    Vista para editar el perfil de usuario.
     """
     if request.method == 'POST':
-        form = PerfilUsuarioForm(request.POST, instance=request.user)
+        form = UserProfileForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'Profile updated successfully.')
-            return redirect('core:perfil')
+            return redirect('core:profile')
         else:
             messages.error(request, 'Please correct the errors in the form.')
     else:
-        form = PerfilUsuarioForm(instance=request.user)
+        form = UserProfileForm(instance=request.user)
     
-    return render(request, 'core/editar_perfil.html', {'form': form})
+    return render(request, 'core/edit_profile.html', {'form': form})
 
 
 @login_required
-def completar_perfil(request):
+def complete_profile(request):
     """
-    Complete passenger profile after registration.
+    Completar el perfil de pasajero despues del registro.
     """
-    # Check if passenger profile exists
+    # Verificar si ya existe el perfil de pasajero
     try:
-        pasajero = Pasajero.objects.get(email=request.user.email)
+        passenger = Passenger.objects.get(email=request.user.email)
         messages.info(request, 'You already have a complete passenger profile.')
-        return redirect('core:perfil')
-    except Pasajero.DoesNotExist:
+        return redirect('core:profile')
+    except Passenger.DoesNotExist:
         pass
     
     if request.method == 'POST':
-        form = PasajeroForm(request.POST)
+        form = PassengerForm(request.POST)
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    pasajero = form.save(commit=False)
-                    pasajero.email = request.user.email
-                    if not pasajero.nombre:
-                        pasajero.nombre = f"{request.user.first_name} {request.user.last_name}".strip()
-                    pasajero.save()
+                    passenger = form.save(commit=False)
+                    passenger.email = request.user.email
+                    if not passenger.first_name:
+                        passenger.first_name = f"{request.user.first_name} {request.user.last_name}".strip()
+                    passenger.save()
                     
                     messages.success(
                         request, 
                         'Passenger profile completed! You can now make reservations.'
                     )
-                    return redirect('core:perfil')
+                    return redirect('core:profile')
                     
             except Exception:
                 messages.error(request, 'Error saving profile. Please try again.')
@@ -210,62 +210,62 @@ def completar_perfil(request):
             messages.error(request, 'Please correct the errors in the form.')
     else:
         initial_data = {
-            'nombre': f"{request.user.first_name} {request.user.last_name}".strip(),
+            'first_name': f"{request.user.first_name} {request.user.last_name}".strip(),
             'email': request.user.email,
         }
-        form = PasajeroForm(initial=initial_data)
+        form = PassengerForm(initial=initial_data)
     
-    return render(request, 'accounts/completar_perfil.html', {'form': form})
+    return render(request, 'accounts/complete_profile.html', {'form': form})
 
 
 @login_required
-def dashboard_usuario(request):
+def user_dashboard(request):
     """
-    Custom dashboard for logged-in users.
+    Panel personalizado para usuarios logueados.
     """
     try:
-        pasajero = Pasajero.objects.get(email=request.user.email)
-    except Pasajero.DoesNotExist:
+        passenger = Passenger.objects.get(email=request.user.email)
+    except Passenger.DoesNotExist:
         messages.warning(request, 'Complete your passenger profile to access all features.')
-        return redirect('core:completar_perfil')
+        return redirect('core:complete_profile')
     
-    total_reservas = pasajero.reservas.count()
-    reservas_activas = pasajero.reservas.filter(
-        estado__in=['confirmed', 'paid']
+    total_reservations = passenger.reservations.count()
+    active_reservations = passenger.reservations.filter(
+        status__in=['confirmed', 'paid']
     ).count()
-    reservas_completadas = pasajero.reservas.filter(
-        estado='completed'
+    completed_reservations = passenger.reservations.filter(
+        status='completed'
     ).count()
     
-    proximas_reservas = pasajero.reservas.filter(
-        estado__in=['confirmed', 'paid'],
-        vuelo__fecha_salida__gte=timezone.now()
-    ).order_by('vuelo__fecha_salida')[:3]
+    upcoming_reservations = passenger.reservations.filter(
+        status__in=['confirmed', 'paid'],
+        flight__departure_date__gte=timezone.now()
+    ).order_by('flight__departure_date')[:3]
     
-    historial_reciente = pasajero.reservas.filter(
-        estado='completed'
-    ).order_by('-fecha_reserva')[:5]
+    recent_history = passenger.reservations.filter(
+        status='completed'
+    ).order_by('-reservation_date')[:5]
     
     context = {
-        'pasajero': pasajero,
-        'total_reservas': total_reservas,
-        'reservas_activas': reservas_activas,
-        'reservas_completadas': reservas_completadas,
-        'proximas_reservas': proximas_reservas,
-        'historial_reciente': historial_reciente,
+        'passenger': passenger,
+        'total_reservations': total_reservations,
+        'active_reservations': active_reservations,
+        'completed_reservations': completed_reservations,
+        'upcoming_reservations': upcoming_reservations,
+        'recent_history': recent_history,
     }
     
     return render(request, 'core/dashboard.html', context)
 
 
-def verificar_disponibilidad_usuario(request):
+def check_username_availability(request):
     """
-    AJAX view to check username availability.
+    Vista AJAX para verificar la disponibilidad de un nombre de usuario.
     """
     if request.method == 'GET':
         username = request.GET.get('username', '')
         if username:
-            disponible = not User.objects.filter(username=username).exists()
-            return JsonResponse({'disponible': disponible})
+            available = not User.objects.filter(username=username).exists()
+            return JsonResponse({'available': available})
     
-    return JsonResponse({'disponible': False})
+    return JsonResponse({'available': False})

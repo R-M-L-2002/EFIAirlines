@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile - Virtual Airline{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-user-circle"></i> My Profile
+        </h1>
+    </div>
+</div>
+
+{% if passenger %}
+<div class="row">
+    <!-- Personal Information -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user"></i> Personal Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Name:</strong> {{ passenger.name }}</p>
+                <p><strong>Document:</strong> {{ passenger.get_document_type_display }}: {{ passenger.document }}</p>
+                <p><strong>Email:</strong> {{ passenger.email }}</p>
+                <p><strong>Phone:</strong> {{ passenger.phone }}</p>
+                <p><strong>Birth Date:</strong> {{ passenger.birth_date|date:"d/m/Y" }}</p>
+                <p><strong>Age:</strong> {{ passenger.age }} years</p>
+                
+                <div class="d-grid">
+                    <a href="{% url 'passengers:edit' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-edit"></i> Edit Information
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar"></i> My Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <i class="fas fa-ticket-alt fa-2x text-primary mb-2"></i>
+                                <h3>{{ bookings|length }}</h3>
+                                <p class="mb-0">Total Bookings</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <i class="fas fa-plane-departure fa-2x text-success mb-2"></i>
+                                <h3>{{ bookings|length }}</h3>
+                                <p class="mb-0">Flights Taken</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <i class="fas fa-calendar-check fa-2x text-warning mb-2"></i>
+                                <h3>{{ bookings|length }}</h3>
+                                <p class="mb-0">Active Bookings</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Bookings -->
+{% if bookings %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history"></i> Recent Bookings
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Flight</th>
+                                <th>Route</th>
+                                <th>Date</th>
+                                <th>Seat</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for booking in bookings %}
+                            <tr>
+                                <td><strong>{{ booking.booking_code }}</strong></td>
+                                <td>{{ booking.flight.flight_number }}</td>
+                                <td>{{ booking.flight.origin }} → {{ booking.flight.destination }}</td>
+                                <td>{{ booking.flight.departure_date|date:"d/m/Y H:i" }}</td>
+                                <td>{{ booking.seat.number }}</td>
+                                <td>
+                                    <span class="badge bg-{% if booking.status == 'confirmed' %}success{% elif booking.status == 'pending' %}warning{% elif booking.status == 'canceled' %}danger{% else %}primary{% endif %}">
+                                        {{ booking.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'bookings:detail' booking.booking_code %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center">
+                    <a href="{% url 'bookings:my_bookings' %}" class="btn btn-primary">
+                        <i class="fas fa-list"></i> View All Bookings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<!-- No passenger profile -->
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+            <h4>Incomplete Profile</h4>
+            <p>To access all features, you need to complete your passenger profile.</p>
+            <a href="{% url 'accounts:complete_profile' %}" class="btn btn-warning">
+                <i class="fas fa-user-plus"></i> Complete Profile
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

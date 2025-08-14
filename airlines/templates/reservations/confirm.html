@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirm Reservation {{ reservation.booking_code }} - Virtual Airline{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-warning text-dark text-center">
+                <h3 class="mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> Confirm Reservation
+                </h3>
+                <p class="mb-0">Code: <strong>{{ reservation.booking_code }}</strong></p>
+            </div>
+            <div class="card-body">
+                <!-- Reservation Summary -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-plane"></i> Flight Details</h5>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <p class="mb-1"><strong>Flight:</strong> {{ reservation.flight.flight_number }}</p>
+                                <p class="mb-1"><strong>Route:</strong> {{ reservation.flight.origin }} → {{ reservation.flight.destination }}</p>
+                                <p class="mb-1"><strong>Date:</strong> {{ reservation.flight.departure_date|date:"d/m/Y" }}</p>
+                                <p class="mb-1"><strong>Departure:</strong> {{ reservation.flight.departure_date|time:"H:i" }}</p>
+                                <p class="mb-0"><strong>Arrival:</strong> {{ reservation.flight.arrival_date|time:"H:i" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-user"></i> Passenger Information</h5>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <p class="mb-1"><strong>Name:</strong> {{ reservation.passenger.name }}</p>
+                                <p class="mb-1"><strong>Document:</strong> {{ reservation.passenger.get_document_type_display }}: {{ reservation.passenger.document_number }}</p>
+                                <p class="mb-1"><strong>Seat:</strong> {{ reservation.seat.number }} ({{ reservation.seat.get_type_display }})</p>
+                                <p class="mb-0"><strong>Email:</strong> {{ reservation.passenger.email }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Price Information -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="fas fa-dollar-sign"></i> Price Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <p class="mb-1">Base flight price: ${{ reservation.flight.base_price|floatformat:0 }}</p>
+                                        <p class="mb-1">{{ reservation.seat.get_type_display }} multiplier: {{ reservation.seat.additional_price }}x</p>
+                                        {% if reservation.notes %}
+                                        <p class="mb-1"><small class="text-muted">{{ reservation.notes }}</small></p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <h3 class="text-success">
+                                            <strong>Total: ${{ total_price|floatformat:0 }}</strong>
+                                        </h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Remaining Time -->
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-clock"></i>
+                    <strong>Time to confirm:</strong> 
+                    This reservation expires on {{ reservation.expiration_date|date:"d/m/Y H:i" }}
+                </div>
+                
+                <!-- Confirmation Form -->
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.payment_method.id_for_label }}" class="form-label">
+                            <i class="fas fa-credit-card"></i> {{ form.payment_method.label }}
+                        </label>
+                        {{ form.payment_method }}
+                        {% if form.payment_method.errors %}
+                            <div class="text-danger small">
+                                {{ form.payment_method.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.payment_notes.id_for_label }}" class="form-label">
+                            {{ form.payment_notes.label }}
+                        </label>
+                        {{ form.payment_notes }}
+                        {% if form.payment_notes.errors %}
+                            <div class="text-danger small">
+                                {{ form.payment_notes.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.accept_terms }}
+                            <label class="form-check-label" for="{{ form.accept_terms.id_for_label }}">
+                                {{ form.accept_terms.label }}
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">
+                                    (View terms and conditions)
+                                </a>
+                            </label>
+                            {% if form.accept_terms.errors %}
+                                <div class="text-danger small">
+                                    {{ form.accept_terms.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'reservations:detail' reservation.booking_code %}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-check"></i> Confirm and Pay
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Terms and Conditions Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Terms and Conditions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>1. Cancellation Policy</h6>
+                <p>Reservations can be canceled up to 2 hours before the flight without penalty.</p>
+                
+                <h6>2. Flight Changes</h6>
+                <p>Changes are subject to availability and may incur additional costs.</p>
+                
+                <h6>3. Documentation</h6>
+                <p>It is the passenger's responsibility to present valid documentation for travel.</p>
+                
+                <h6>4. Baggage</h6>
+                <p>Carry-on baggage is included. Checked baggage has an additional cost depending on the class.</p>
+                
+                <h6>5. Liability</h6>
+                <p>The airline is not responsible for delays due to weather conditions or force majeure.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Understood</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
