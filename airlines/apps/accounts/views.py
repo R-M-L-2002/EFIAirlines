@@ -76,7 +76,7 @@ def user_registration(request):
                             request, 
                             f'Welcome {user.first_name}! Your account has been created successfully.'
                         )
-                        return redirect('accounts:complete_profile')
+                        return redirect('accounts:home')
                     
             except Exception:
                 messages.error(request, 'Error creating account. Please try again.')
