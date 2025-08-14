@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block title %}Available Flights - Virtual Airline{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-plane-departure"></i> Available Flights
+            <small class="text-muted">({{ total_flights }} flights)</small>
+        </h1>
+    </div>
+</div>
+
+<!-- Search Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter"></i> Search Filters
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="origin" class="form-label">Origin</label>
+                        <select name="origin" id="origin" class="form-control">
+                            <option value="">All Cities</option>
+                            {% for city in origin_cities %}
+                            <option value="{{ city }}" {% if filters.origin == city %}selected{% endif %}>
+                                {{ city }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="destination" class="form-label">Destination</label>
+                        <select name="destination" id="destination" class="form-control">
+                            <option value="">All Cities</option>
+                            {% for city in destination_cities %}
+                            <option value="{{ city }}" {% if filters.destination == city %}selected{% endif %}>
+                                {{ city }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="date_from" class="form-label">From</label>
+                        <input type="date" name="date_from" id="date_from" 
+                               class="form-control" value="{{ filters.date_from }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="date_to" class="form-label">To</label>
+                        <input type="date" name="date_to" id="date_to" 
+                               class="form-control" value="{{ filters.date_to }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="status" class="form-label">Status</label>
+                        <select name="status" id="status" class="form-control">
+                            <option value="">All</option>
+                            {% for value, name in flight_statuses %}
+                            <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>
+                                {{ name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <a href="{% url 'flights:list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flights List -->
+<div class="row">
+    {% for flight in page_obj %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 card-hover">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-plane"></i> {{ flight.flight_number }}
+                </h5>
+                <span class="badge bg-{% if flight.status == 'scheduled' %}success{% elif flight.status == 'boarding' %}warning{% else %}secondary{% endif %}">
+                    {{ flight.get_status_display }}
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- Route -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-center">
+                            <div class="fw-bold">{{ flight.origin }}</div>
+                            <small class="text-muted">{{ flight.departure_time|time:"H:i" }}</small>
+                        </div>
+                        <div class="text-center">
+                            <i class="fas fa-plane text-primary"></i>
+                            <div class="small text-muted">{{ flight.formatted_duration }}</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="fw-bold">{{ flight.destination }}</div>
+                            <small class="text-muted">{{ flight.arrival_time|time:"H:i" }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Flight Info -->
+                <div class="mb-3">
+                    <p class="mb-1">
+                        <i class="fas fa-calendar text-primary"></i>
+                        <strong>{{ flight.departure_date|date:"d/m/Y" }}</strong>
+                    </p>
+                    <p class="mb-1">
+                        <i class="fas fa-plane-departure text-success"></i>
+                        {{ flight.plane.model }}
+                    </p>
+                    <p class="mb-1">
+                        <i class="fas fa-users text-info"></i>
+                        {{ flight.available_seats }}/{{ flight.plane.capacity }} available
+                    </p>
+                </div>
+                
+                <!-- Price -->
+                <div class="text-center mb-3">
+                    <h4 class="text-success mb-0">
+                        ${{ flight.base_price|floatformat:0 }}
+                    </h4>
+                    <small class="text-muted">starting from</small>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'flights:detail' flight.id %}" class="btn btn-outline-primary">
+                        <i class="fas fa-eye"></i> View Details
+                    </a>
+                    {% if user.is_authenticated and flight.available_seats > 0 %}
+                    <a href="{% url 'reservations:new' flight.id %}" class="btn btn-primary">
+                        <i class="fas fa-ticket-alt"></i> Book Now
+                    </a>
+                    {% elif not user.is_authenticated %}
+                    <a href="{% url 'login' %}" class="btn btn-success">
+                        <i class="fas fa-sign-in-alt"></i> Login to Book
+                    </a>
+                    {% else %}
+                    <button class="btn btn-secondary" disabled>
+                        <i class="fas fa-times"></i> Sold Out
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle"></i>
+            No flights found with the selected filters.
+            <br>
+            <a href="{% url 'flights:list' %}" class="btn btn-outline-primary mt-2">
+                View All Flights
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="row mt-4">
+    <div class="col-12">
+        <nav aria-label="Flights navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if request.GET.origin %}&origin={{ request.GET.origin }}{% endif %}{% if request.GET.destination %}&destination={{ request.GET.destination }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.origin %}&origin={{ request.GET.origin }}{% endif %}{% if request.GET.destination %}&destination={{ request.GET.destination }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">
+                        {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.origin %}&origin={{ request.GET.origin }}{% endif %}{% if request.GET.destination %}&destination={{ request.GET.destination }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.origin %}&origin={{ request.GET.origin }}{% endif %}{% if request.GET.destination %}&destination={{ request.GET.destination }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

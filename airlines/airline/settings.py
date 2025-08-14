@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'apps.flights.apps.FlightsConfig',
     'apps.passengers.apps.PassengersConfig',
     'apps.reports',
-    'apps.reservations',
+    'apps.reservations.apps.ReservationsConfig',
 ]
 
 MIDDLEWARE = [
@@ -65,7 +65,7 @@ ROOT_URLCONF = 'airline.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

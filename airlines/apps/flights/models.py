@@ -5,12 +5,12 @@ from datetime import timedelta
 
 # Create your models here.
 
-class Aircraft(models.Model):
+class Airplane(models.Model):
     """
     este modelo representa un avion de la aerolinea
     guarda info basica como modelo, capacidad y distribucion de asientos
     """
-    model = models.CharField(_("Aircraft model"), max_length=100)   # modelo del avion
+    model = models.CharField(_("Airplane model"), max_length=100)   # modelo del avion
     capacity = models.PositiveIntegerField(_("Capacity"))           # cantidad total de asientos
     rows = models.PositiveIntegerField(_("Rows"))                   # cantidad de filas
     columns = models.PositiveIntegerField(_("Columns"))             # cantidad de columnas
@@ -19,8 +19,8 @@ class Aircraft(models.Model):
     updated_at = models.DateTimeField(_("Updated at"), auto_now=True)     # ultima modificacion
 
     class Meta:
-        verbose_name = _("Aircraft")
-        verbose_name_plural = _("Aircraft")
+        verbose_name = _("Airplane")
+        verbose_name_plural = _("Airplane")
         ordering = ['model']  # ordena alfabeticamente por modelo
 
     def __str__(self):
@@ -46,11 +46,12 @@ class Flight(models.Model):
         ('delayed', _('Delayed')),     # retrasado
     ]
 
-    aircraft = models.ForeignKey(
-        Aircraft,
+    Airplane = models.ForeignKey(
+        Airplane,
         on_delete=models.CASCADE,
         related_name='flights',
-        verbose_name=_("Aircraft")
+        verbose_name=_("Airplane"),
+        default=1
     )
     flight_number = models.CharField(_("Flight number"), max_length=10, unique=True) # numero de vuelo
     origin = models.CharField(_("Origin"), max_length=100)                           # ciudad de origen
@@ -87,7 +88,7 @@ class Flight(models.Model):
         reserved_seats = self.reservations.filter(
             status__in=['confirmed', 'paid']
         ).values_list('seat_id', flat=True)
-        return self.aircraft.seats.exclude(id__in=reserved_seats).count()
+        return self.Airplane.seats.exclude(id__in=reserved_seats).count()
 
 
 class Seat(models.Model):
@@ -108,11 +109,12 @@ class Seat(models.Model):
         ('maintenance', _('Maintenance')), # en mantenimiento
     ]
 
-    aircraft = models.ForeignKey(
-        Aircraft,
+    Airplane = models.ForeignKey(
+        Airplane,
         on_delete=models.CASCADE,
         related_name='seats',
-        verbose_name=_("Aircraft")
+        verbose_name=_("Airplane"),
+        default=1 
     )
     seat_number = models.CharField(_("Seat number"), max_length=5)   # numero del asiento (ej. 12A)
     row = models.PositiveIntegerField(_("Row"))                      # numero de fila
@@ -133,7 +135,7 @@ class Seat(models.Model):
     class Meta:
         verbose_name = _("Seat")
         verbose_name_plural = _("Seats")
-        unique_together = ['aircraft', 'seat_number'] # no puede repetirse el mismo asiento en el mismo avion
+        unique_together = ['Airplane', 'seat_number'] # no puede repetirse el mismo asiento en el mismo avion
         ordering = ['row', 'column']                  # ordena por fila y columna
 
     def __str__(self):

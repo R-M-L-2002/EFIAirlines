@@ -1,0 +1,51 @@
+ .seat {
+        width: 35px;
+        height: 35px;
+        margin: 2px;
+        border: 2px solid #ddd;
+        border-radius: 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .seat.available {
+        background-color: #d4edda;
+        border-color: #28a745;
+        color: #155724;
+    }
+    .seat.occupied {
+        background-color: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+        cursor: not-allowed;
+    }
+    .seat.maintenance {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+        color: #856404;
+        cursor: not-allowed;
+    }
+    .seat.first {
+        border-width: 3px;
+    }
+    .seat.business {
+        border-style: dashed;
+    }
+    .row-seat {
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+    }
+    .row-number {
+        width: 30px;
+        text-align: center;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+    .aisle {
+        width: 20px;
+    }
