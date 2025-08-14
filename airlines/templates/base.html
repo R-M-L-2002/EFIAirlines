@@ -13,26 +13,88 @@
     {% block extra_css %}{% endblock %}
     
     <style>
-        .navbar-brand {
-            font-weight: bold;
+        body {
+            background-color: #f5f5f7;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .footer {
-            background-color: #f8f9fa;
-            margin-top: 50px;
+
+        /* Navbar estilo Despegar */
+        .navbar {
+            background-color: #0071c2 !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.4rem;
+        }
+        .nav-link {
+            font-weight: 500;
+        }
+        .nav-link:hover {
+            color: #ffd200 !important;
+        }
+
+        /* Cards estilo neumorphism suave */
+        .card-hover {
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            background: #ffffff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         }
         .card-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.08);
         }
-        .alert-dismissible {
-            position: relative;
+
+        /* Buttons */
+        .btn-primary {
+            background-color: #0071c2;
+            border-color: #0071c2;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background-color: #005b9a;
+            border-color: #005b9a;
+        }
+        .btn-outline-primary {
+            border-color: #0071c2;
+            color: #0071c2;
+        }
+        .btn-outline-primary:hover {
+            background-color: #0071c2;
+            color: #fff;
+        }
+
+        /* Footer estilo Despegar */
+        .footer {
+            background-color: #0071c2;
+            color: #ffffff;
+            margin-top: 50px;
+        }
+        .footer a {
+            color: #ffd200;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Alerts más suaves */
+        .alert {
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Input, forms */
+        input, select, textarea {
+            border-radius: 12px;
+            border: 1px solid #ced4da;
         }
     </style>
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{% url 'accounts:home' %}">
                 <i class="fas fa-plane"></i> Virtual Airline
@@ -118,7 +180,7 @@
                         <i class="fas fa-info-circle"></i>
                     {% endif %}
                     {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             {% endfor %}
         </div>
@@ -135,10 +197,10 @@
             <div class="row">
                 <div class="col-md-6">
                     <h5><i class="fas fa-plane"></i> Virtual Airline</h5>
-                    <p class="text-muted">Airline management system developed with Django.</p>
+                    <p>Airline management system developed with Django.</p>
                 </div>
                 <div class="col-md-6 text-md-end">
-                    <p class="text-muted">
+                    <p>
                         &copy; 2025 Virtual Airline. All rights reserved.
                     </p>
                 </div>

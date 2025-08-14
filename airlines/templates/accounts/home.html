@@ -6,17 +6,13 @@
 <!-- Hero Section -->
 <div class="row mb-5">
     <div class="col-12">
-        <div class="jumbotron bg-primary text-white p-5 rounded">
+        <div class="card card-hover text-white p-5 rounded-4" style="background: linear-gradient(135deg,#0071c2,#005b9a);">
             <div class="container text-center">
-                <h1 class="display-4">
-                    <i class="fas fa-plane"></i> Welcome to Virtual Airline
+                <h1 class="display-4 fw-bold mb-3">
+                     Welcome to Virtual Airline
                 </h1>
-                <p class="lead">
-                    Your trusted airline to fly across Argentina
-                </p>
-                <hr class="my-4 bg-white">
-                <p>Book your flights easily and safely</p>
-                <a class="btn btn-light btn-lg" href="{% url 'flights:list' %}" role="button">
+                <p class="lead mb-4">Your trusted airline to fly across Argentina</p>
+                <a class="btn btn-light btn-lg fw-semibold" href="{% url 'flights:list' %}">
                     <i class="fas fa-search"></i> Search Flights
                 </a>
             </div>
@@ -25,32 +21,26 @@
 </div>
 
 <!-- Statistics -->
-<div class="row mb-5">
+<div class="row mb-5 text-center">
     <div class="col-md-4 mb-3">
-        <div class="card text-center card-hover">
-            <div class="card-body">
-                <i class="fas fa-plane-departure fa-3x text-primary mb-3"></i>
-                <h3 class="card-title">{{ total_flights }}</h3>
-                <p class="card-text">Available Flights</p>
-            </div>
+        <div class="card card-hover py-5 shadow-sm">
+            <i class="fas fa-plane-departure fa-3x text-primary mb-3"></i>
+            <h3 class="card-title">{{ total_flights }}</h3>
+            <p class="card-text">Available Flights</p>
         </div>
     </div>
     <div class="col-md-4 mb-3">
-        <div class="card text-center card-hover">
-            <div class="card-body">
-                <i class="fas fa-users fa-3x text-success mb-3"></i>
-                <h3 class="card-title">{{ total_passengers }}</h3>
-                <p class="card-text">Registered Passengers</p>
-            </div>
+        <div class="card card-hover py-5 shadow-sm">
+            <i class="fas fa-users fa-3x text-success mb-3"></i>
+            <h3 class="card-title">{{ total_passengers }}</h3>
+            <p class="card-text">Registered Passengers</p>
         </div>
     </div>
     <div class="col-md-4 mb-3">
-        <div class="card text-center card-hover">
-            <div class="card-body">
-                <i class="fas fa-ticket-alt fa-3x text-warning mb-3"></i>
-                <h3 class="card-title">{{ total_bookings }}</h3>
-                <p class="card-text">Active Bookings</p>
-            </div>
+        <div class="card card-hover py-5 shadow-sm">
+            <i class="fas fa-ticket-alt fa-3x text-warning mb-3"></i>
+            <h3 class="card-title">{{ total_bookings }}</h3>
+            <p class="card-text">Active Bookings</p>
         </div>
     </div>
 </div>
@@ -59,15 +49,15 @@
 {% if upcoming_flights %}
 <div class="row mb-5">
     <div class="col-12">
-        <h2 class="mb-4">
+        <h2 class="mb-4 fw-bold text-center">
             <i class="fas fa-clock"></i> Upcoming Flights
         </h2>
-        <div class="row">
+        <div class="row g-4">
             {% for flight in upcoming_flights %}
-            <div class="col-md-6 col-lg-4 mb-3">
-                <div class="card card-hover">
-                    <div class="card-header bg-light">
-                        <h5 class="card-title mb-0">
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-hover shadow-sm h-100 rounded-4">
+                    <div class="card-header bg-light rounded-top-4">
+                        <h5 class="mb-0 fw-semibold">
                             <i class="fas fa-plane"></i> {{ flight.flight_number }}
                         </h5>
                     </div>
@@ -81,29 +71,17 @@
                                 <i class="fas fa-map-marker-alt text-danger"></i> {{ flight.destination }}
                             </strong>
                         </p>
-                        <p class="card-text">
-                            <i class="fas fa-calendar"></i> 
-                            {{ flight.departure_date|date:"d/m/Y" }}
-                        </p>
-                        <p class="card-text">
-                            <i class="fas fa-clock"></i> 
-                            {{ flight.departure_date|time:"H:i" }}
-                        </p>
-                        <p class="card-text">
-                            <span class="badge bg-primary">{{ flight.get_status_display }}</span>
-                        </p>
-                        <p class="card-text">
-                            <strong class="text-success">
-                                ${{ flight.base_price|floatformat:0 }}
-                            </strong>
-                        </p>
+                        <p class="card-text"><i class="fas fa-calendar"></i> {{ flight.departure_date|date:"d/m/Y" }}</p>
+                        <p class="card-text"><i class="fas fa-clock"></i> {{ flight.departure_date|time:"H:i" }}</p>
+                        <p class="card-text"><span class="badge bg-primary">{{ flight.get_status_display }}</span></p>
+                        <p class="card-text"><strong class="text-success">${{ flight.base_price|floatformat:0 }}</strong></p>
                     </div>
-                    <div class="card-footer">
-                        <a href="{% url 'flights:detail' flight.id %}" class="btn btn-outline-primary btn-sm">
+                    <div class="card-footer d-flex justify-content-between bg-white border-0">
+                        <a href="{% url 'flights:detail' flight.id %}" class="btn btn-outline-primary btn-sm fw-semibold">
                             <i class="fas fa-eye"></i> View Details
                         </a>
                         {% if user.is_authenticated %}
-                        <a href="{% url 'bookings:new' flight.id %}" class="btn btn-primary btn-sm">
+                        <a href="{% url 'bookings:new' flight.id %}" class="btn btn-primary btn-sm fw-semibold">
                             <i class="fas fa-ticket-alt"></i> Book
                         </a>
                         {% endif %}
@@ -112,8 +90,8 @@
             </div>
             {% endfor %}
         </div>
-        <div class="text-center">
-            <a href="{% url 'flights:list' %}" class="btn btn-outline-primary">
+        <div class="text-center mt-4">
+            <a href="{% url 'flights:list' %}" class="btn btn-outline-primary fw-semibold">
                 <i class="fas fa-list"></i> View All Flights
             </a>
         </div>
@@ -124,41 +102,29 @@
 <!-- Services Section -->
 <div class="row mb-5">
     <div class="col-12">
-        <h2 class="text-center mb-4">
+        <h2 class="text-center mb-4 fw-bold">
             <i class="fas fa-star"></i> Our Services
         </h2>
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <div class="card h-100 text-center card-hover">
-                    <div class="card-body">
-                        <i class="fas fa-shield-alt fa-3x text-primary mb-3"></i>
-                        <h5 class="card-title">Safe Flights</h5>
-                        <p class="card-text">
-                            Modern fleet with the highest safety standards
-                        </p>
-                    </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 text-center card-hover py-5 shadow-sm rounded-4">
+                    <i class="fas fa-shield-alt fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title fw-bold">Safe Flights</h5>
+                    <p class="card-text">Modern fleet with the highest safety standards</p>
                 </div>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card h-100 text-center card-hover">
-                    <div class="card-body">
-                        <i class="fas fa-clock fa-3x text-success mb-3"></i>
-                        <h5 class="card-title">Punctuality</h5>
-                        <p class="card-text">
-                            Committed to schedules so you arrive on time
-                        </p>
-                    </div>
+            <div class="col-md-4">
+                <div class="card h-100 text-center card-hover py-5 shadow-sm rounded-4">
+                    <i class="fas fa-clock fa-3x text-success mb-3"></i>
+                    <h5 class="card-title fw-bold">Punctuality</h5>
+                    <p class="card-text">Committed to schedules so you arrive on time</p>
                 </div>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card h-100 text-center card-hover">
-                    <div class="card-body">
-                        <i class="fas fa-headset fa-3x text-warning mb-3"></i>
-                        <h5 class="card-title">24/7 Support</h5>
-                        <p class="card-text">
-                            Customer support available around the clock
-                        </p>
-                    </div>
+            <div class="col-md-4">
+                <div class="card h-100 text-center card-hover py-5 shadow-sm rounded-4">
+                    <i class="fas fa-headset fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title fw-bold">24/7 Support</h5>
+                    <p class="card-text">Customer support available around the clock</p>
                 </div>
             </div>
         </div>
@@ -167,19 +133,17 @@
 
 <!-- Call to Action -->
 {% if not user.is_authenticated %}
-<div class="row">
+<div class="row mb-5">
     <div class="col-12">
-        <div class="card bg-light">
-            <div class="card-body text-center">
-                <h3>Ready to Fly?</h3>
-                <p class="lead">Sign up and start booking your flights</p>
-                <a href="{% url 'accounts:register' %}" class="btn btn-success btn-lg me-3">
-                    <i class="fas fa-user-plus"></i> Register
-                </a>
-                <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary btn-lg">
-                    <i class="fas fa-sign-in-alt"></i> Log In
-                </a>
-            </div>
+        <div class="card card-hover shadow-lg p-5 text-center rounded-4">
+            <h3 class="fw-bold mb-3">Ready to Fly?</h3>
+            <p class="lead mb-4">Sign up and start booking your flights</p>
+            <a href="{% url 'accounts:register' %}" class="btn btn-success btn-lg me-3 fw-semibold">
+                <i class="fas fa-user-plus"></i> Register
+            </a>
+            <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary btn-lg fw-semibold">
+                <i class="fas fa-sign-in-alt"></i> Log In
+            </a>
         </div>
     </div>
 </div>
