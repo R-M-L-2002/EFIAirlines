@@ -9,21 +9,25 @@ import string
 from apps.passengers.models import Passenger
 from apps.flights.models import Flight, Seat
 
-# Create your models here.
 
 class Reservation(models.Model):
     """
-    este modelo conecta al pasajero con su vuelo y asiento
+    Este modelo conecta al pasajero con su vuelo y asiento
     """
-    RESERVATION_STATUS = [
-        ('pending', _('Pending')),     # reserva pendiente
-        ('confirmed', _('Confirmed')), # reserva confirmada
-        ('paid', _('Paid')),           # reserva pagada
-        ('cancelled', _('Cancelled')), # reserva cancelada
-        ('completed', _('Completed')), # vuelo completado
+    STATUS_PENDING = 'pending'
+    STATUS_CONFIRMED = 'confirmed'
+    STATUS_PAID = 'paid'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_COMPLETED = 'completed'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, _('Pending')),
+        (STATUS_CONFIRMED, _('Confirmed')),
+        (STATUS_PAID, _('Paid')),
+        (STATUS_CANCELLED, _('Cancelled')),
+        (STATUS_COMPLETED, _('Completed')),
     ]
 
-    # vuelo al que pertenece la reserva
     flight = models.ForeignKey(
         Flight,
         on_delete=models.CASCADE,
@@ -31,7 +35,6 @@ class Reservation(models.Model):
         verbose_name=_("Flight")
     )
 
-    # pasajero que hizo la reserva
     passenger = models.ForeignKey(
         Passenger,
         on_delete=models.CASCADE,
@@ -39,7 +42,6 @@ class Reservation(models.Model):
         verbose_name=_("Passenger")
     )
 
-    # asiento que eligio el pasajero
     seat = models.ForeignKey(
         Seat,
         on_delete=models.CASCADE,
@@ -47,43 +49,38 @@ class Reservation(models.Model):
         verbose_name=_("Seat")
     )
 
-    # codigo unico para identificar la reserva
-    reservation_code = models.CharField(_("Reservation code"), max_length=10, unique=True, blank=True)
+    reservation_code = models.CharField(
+        _("Reservation code"),
+        max_length=10,
+        unique=True,
+        blank=True
+    )
 
-    # estado de la reserva (usa los valores de arriba)
     status = models.CharField(
         _("Status"),
         max_length=20,
-        choices=RESERVATION_STATUS,
-        default='pending'
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING
     )
 
-    # precio total
     total_price = models.DecimalField(_("Total price"), max_digits=10, decimal_places=2)
-
-    # fecha en que se hizo la reserva
     reservation_date = models.DateTimeField(_("Reservation date"), auto_now_add=True)
-
-    # fecha en que expira la reserva si no se paga
     expiration_date = models.DateTimeField(_("Expiration date"), blank=True)
 
     class Meta:
         verbose_name = _("Reservation")
         verbose_name_plural = _("Reservations")
-        unique_together = ['flight', 'seat']  # no puede haber dos reservas con el mismo vuelo y asiento
-        ordering = ['-reservation_date']      # ordena de la mas nueva a la mas vieja
+        unique_together = ['flight', 'seat']
+        ordering = ['-reservation_date']
 
     def save(self, *args, **kwargs):
-        # si no tiene codigo, genera uno
         if not self.reservation_code:
             self.reservation_code = self.generate_reservation_code()
-        # si no tiene fecha de expiracion, le pone 24 horas despues de ahora
         if not self.expiration_date:
             self.expiration_date = timezone.now() + timedelta(hours=24)
         super().save(*args, **kwargs)
 
     def generate_reservation_code(self):
-        # genera un codigo de 6 caracteres unicos (letras y numeros)
         while True:
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
             if not Reservation.objects.filter(reservation_code=code).exists():
@@ -94,23 +91,33 @@ class Reservation(models.Model):
 
     @property
     def is_expired(self):
-        # devuelve True si ya paso la fecha de expiracion y sigue pendiente
-        return timezone.now() > self.expiration_date and self.status == 'pending'
+        return timezone.now() > self.expiration_date and self.status == self.STATUS_PENDING
+
+    @property
+    def can_cancel(self):
+        """
+        Permite cancelar si está confirmado o pagado y no venció el vuelo
+        """
+        return self.status in [self.STATUS_CONFIRMED, self.STATUS_PAID] and not self.is_expired
 
 
 class Ticket(models.Model):
     """
-    este modelo representa el ticket electronico
-    se genera automaticamente cuando la reserva se confirma
+    Este modelo representa el ticket electrónico
+    Se genera automáticamente cuando la reserva se confirma
     """
+    TICKET_ISSUED = 'issued'
+    TICKET_USED = 'used'
+    TICKET_CANCELLED = 'cancelled'
+    TICKET_EXPIRED = 'expired'
+
     TICKET_STATUS = [
-        ('issued', _('Issued')),       # emitido
-        ('used', _('Used')),           # usado
-        ('cancelled', _('Cancelled')), # cancelado
-        ('expired', _('Expired')),     # vencido
+        (TICKET_ISSUED, _('Issued')),
+        (TICKET_USED, _('Used')),
+        (TICKET_CANCELLED, _('Cancelled')),
+        (TICKET_EXPIRED, _('Expired')),
     ]
 
-    # cada ticket esta vinculado a una sola reserva
     reservation = models.OneToOneField(
         Reservation,
         on_delete=models.CASCADE,
@@ -118,33 +125,21 @@ class Ticket(models.Model):
         verbose_name=_("Reservation")
     )
 
-    # codigo de barras unico
     barcode = models.CharField(_("Barcode"), max_length=50, unique=True, blank=True)
-
-    # estado del ticket
-    status = models.CharField(
-        _("Status"),
-        max_length=20,
-        choices=TICKET_STATUS,
-        default='issued'
-    )
-
-    # fecha en que se emitio
+    status = models.CharField(_("Status"), max_length=20, choices=TICKET_STATUS, default=TICKET_ISSUED)
     issue_date = models.DateTimeField(_("Issue date"), auto_now_add=True)
 
     class Meta:
         verbose_name = _("Ticket")
         verbose_name_plural = _("Tickets")
-        ordering = ['-issue_date']  # de mas nuevo a mas viejo
+        ordering = ['-issue_date']
 
     def save(self, *args, **kwargs):
-        # si no tiene codigo de barras, genera uno
         if not self.barcode:
             self.barcode = self.generate_barcode()
         super().save(*args, **kwargs)
 
     def generate_barcode(self):
-        # genera un codigo unico de 12 caracteres usando uuid
         return str(uuid.uuid4()).replace('-', '').upper()[:12]
 
     def __str__(self):

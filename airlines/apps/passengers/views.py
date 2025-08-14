@@ -113,36 +113,26 @@ def passenger_profile(request):
 
 @login_required
 def edit_passenger(request):
-    """
-    Vista para editar info del pasajero.
-    """
     try:
-        # Buscamos al pasajero logueado
         passenger = Passenger.objects.get(email=request.user.email)
     except Passenger.DoesNotExist:
         messages.error(request, 'Passenger profile not found.')
         return redirect('accounts:complete_profile')
-    
+
     if request.method == 'POST':
-        # Si vienen datos por POST, llenamos el form con ellos
         form = PassengerForm(request.POST, instance=passenger)
         if form.is_valid():
-            try:
-                form.save()  # guardamos cambios
-                messages.success(request, 'Information updated successfully.')
-                return redirect('passengers:profile')
-            except Exception:
-                messages.error(request, 'Error updating information.')
+            form.save()
+            messages.success(request, 'Information updated successfully.')
+            # redirigimos al perfil
+            return redirect('accounts:profile')  
         else:
             messages.error(request, 'Please correct the errors in the form.')
     else:
-        # Si no es POST, mostramos el form con la info actual
         form = PassengerForm(instance=passenger)
-    
+
     context = {
         'form': form,
-        'passenger': passenger,
         'title': 'Edit Personal Information',
     }
-    
-    return render(request, 'passengers/edit.html', context)
+    return render(request, 'passengers/passenger_form.html', context)

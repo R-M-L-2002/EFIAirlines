@@ -28,42 +28,43 @@ from apps.passengers.models import Passenger
 @login_required
 def my_reservations(request):
     """
-    Lista todas las reservas del usuario logueado con estadísticas.
+    Vista que muestra todas las reservas del usuario logueado.
+    Permite filtrar por estado y paginar los resultados.
     """
-    try:
-        passenger = Passenger.objects.get(email=request.user.email)
-        reservations = Reservation.objects.filter(passenger=passenger).order_by('-reservation_date')
-    except Passenger.DoesNotExist:
-        messages.warning(request, 'You need to complete your passenger profile to see reservations.')
-        return redirect('accounts:complete_profile')
 
-    # Filtrado opcional por status
-    status_filter = request.GET.get('status')
+    # Filtramos las reservas asociadas al pasajero del usuario logueado
+    # IMPORTANTE: passenger__user hace referencia a que Passenger tiene un campo OneToOneField con User
+    reservations = Reservation.objects.filter(passenger__user=request.user)
+
+    # Obtenemos el filtro por estado desde GET, si viene
+    status_filter = request.GET.get('status', '')
     if status_filter:
         reservations = reservations.filter(status=status_filter)
 
-    # Paginación
-    paginator = Paginator(reservations, 6)  # 6 reservas por página
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    # Lista de estados disponibles para los filtros en el template
+    reservation_statuses = Reservation.STATUS_CHOICES
 
-    # Estadísticas
+    # Calculamos estadisticas para mostrar en el dashboard
     stats = {
         'total': reservations.count(),
         'pending': reservations.filter(status='pending').count(),
         'confirmed': reservations.filter(status='confirmed').count(),
+        'paid': reservations.filter(status='paid').count(),
         'completed': reservations.filter(status='completed').count(),
-        'canceled': reservations.filter(status='canceled').count(),
+        'canceled': reservations.filter(status='cancelled').count(),
     }
 
-    # Lista de estados para el filtro
-    reservation_statuses = Reservation.STATUS_CHOICES
+    # Paginamos las reservas, 6 por pagina
+    paginator = Paginator(reservations, 6)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
+    # Renderizamos el template con todas las variables necesarias
     return render(request, 'reservations/list.html', {
-        'page_obj': page_obj,
-        'stats': stats,
-        'reservation_statuses': reservation_statuses,
-        'status_filter': status_filter,
+        'page_obj': page_obj,                  # reservas paginadas
+        'reservation_statuses': reservation_statuses,  # lista de estados
+        'status_filter': status_filter,        # filtro actual
+        'stats': stats                         # estadisticas
     })
 
 @login_required
