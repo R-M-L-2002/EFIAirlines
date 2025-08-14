@@ -1,5 +1,5 @@
 """
-Vistas para la aplicacion core.
+Vistas para la aplicacion accounts.
 
 Este archivo contiene:
 - Vista home
@@ -55,7 +55,7 @@ def user_registration(request):
     """
     if request.user.is_authenticated:
         messages.info(request, 'You are already logged in.')
-        return redirect('core:home')
+        return redirect('accounts:home')
     
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
@@ -76,7 +76,7 @@ def user_registration(request):
                             request, 
                             f'Welcome {user.first_name}! Your account has been created successfully.'
                         )
-                        return redirect('core:complete_profile')
+                        return redirect('accounts:complete_profile')
                     
             except Exception:
                 messages.error(request, 'Error creating account. Please try again.')
@@ -93,7 +93,7 @@ def user_login(request):
     Vista de inicio de sesion personalizada.
     """
     if request.user.is_authenticated:
-        return redirect('core:home')
+        return redirect('accounts:home')
     
     if request.method == 'POST':
         form = LoginForm(request, data=request.POST)
@@ -107,7 +107,7 @@ def user_login(request):
                 messages.success(request, f'Welcome back, {user.first_name}!')
                 
                 # Redirigir a la siguiente pagina o al home
-                next_page = request.GET.get('next', 'core:home')
+                next_page = request.GET.get('next', 'accounts:home')
                 return redirect(next_page)
             else:
                 messages.error(request, 'Invalid username or password.')
@@ -128,7 +128,7 @@ def user_logout(request):
         logout(request)
         messages.success(request, f'Goodbye, {name}!')
     
-    return redirect('core:home')
+    return redirect('accounts:home')
 
 
 @login_required
@@ -165,13 +165,13 @@ def edit_profile(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'Profile updated successfully.')
-            return redirect('core:profile')
+            return redirect('accounts:profile')
         else:
             messages.error(request, 'Please correct the errors in the form.')
     else:
         form = UserProfileForm(instance=request.user)
     
-    return render(request, 'core/edit_profile.html', {'form': form})
+    return render(request, 'accounts/edit_profile.html', {'form': form})
 
 
 @login_required
@@ -183,7 +183,7 @@ def complete_profile(request):
     try:
         passenger = Passenger.objects.get(user=request.user)
         messages.info(request, 'You already have a complete passenger profile.')
-        return redirect('core:profile')
+        return redirect('accounts:profile')
     except Passenger.DoesNotExist:
         passenger = Passenger(user=request.user)  # <--- clave
 
@@ -198,7 +198,7 @@ def complete_profile(request):
                 request,
                 'Passenger profile completed! You can now make reservations.'
             )
-            return redirect('core:profile')
+            return redirect('accounts:profile')
         else:
             messages.error(request, 'Please correct the errors in the form.')
     else:
@@ -220,7 +220,7 @@ def user_dashboard(request):
         passenger = Passenger.objects.get(email=request.user.email)
     except Passenger.DoesNotExist:
         messages.warning(request, 'Complete your passenger profile to access all features.')
-        return redirect('core:complete_profile')
+        return redirect('accounts:complete_profile')
     
     total_reservations = passenger.reservations.count()
     active_reservations = passenger.reservations.filter(
@@ -248,7 +248,7 @@ def user_dashboard(request):
         'recent_history': recent_history,
     }
     
-    return render(request, 'core/dashboard.html', context)
+    return render(request, 'accounts/dashboard.html', context)
 
 
 def check_username_availability(request):
