@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 from django.contrib.auth.models import User
 
 class Passenger(models.Model):
@@ -30,6 +31,10 @@ class Passenger(models.Model):
     birth_date = models.DateField(_("Birth date"))
     active = models.BooleanField(_("Active"), default=True)
 
+    # ----> Campos de fechas con default
+    created_at = models.DateTimeField(_("Created at"), default=timezone.now)
+    updated_at = models.DateTimeField(_("Updated at"), default=timezone.now)
+
     class Meta:
         verbose_name = _("Passenger")
         verbose_name_plural = _("Passengers")
@@ -50,3 +55,8 @@ class Passenger(models.Model):
             self.birth_date
         ]
         return all(required_fields)
+
+    def save(self, *args, **kwargs):
+        """Actualiza updated_at al guardar"""
+        self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
