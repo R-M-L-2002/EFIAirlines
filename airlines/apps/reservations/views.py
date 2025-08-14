@@ -26,6 +26,104 @@ from apps.passengers.models import Passenger
 # Create your views here.
 
 @login_required
+def my_reservations(request):
+    """
+    Lista todas las reservas del usuario logueado con estadísticas.
+    """
+    try:
+        passenger = Passenger.objects.get(email=request.user.email)
+        reservations = Reservation.objects.filter(passenger=passenger).order_by('-created_at')
+    except Passenger.DoesNotExist:
+        messages.warning(request, 'You need to complete your passenger profile to see reservations.')
+        return redirect('accounts:complete_profile')
+
+    # Filtrado opcional por status
+    status_filter = request.GET.get('status')
+    if status_filter:
+        reservations = reservations.filter(status=status_filter)
+
+    # Paginación
+    paginator = Paginator(reservations, 6)  # 6 reservas por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Estadísticas
+    stats = {
+        'total': reservations.count(),
+        'pending': reservations.filter(status='pending').count(),
+        'confirmed': reservations.filter(status='confirmed').count(),
+        'completed': reservations.filter(status='completed').count(),
+        'canceled': reservations.filter(status='canceled').count(),
+    }
+
+    # Lista de estados para el filtro
+    reservation_statuses = Reservation.STATUS_CHOICES
+
+    return render(request, 'reservations/list.html', {
+        'page_obj': page_obj,
+        'stats': stats,
+        'reservation_statuses': reservation_statuses,
+        'status_filter': status_filter,
+    })
+
+@login_required
+def confirm_reservation(request, reservation_code):
+    """
+    Vista para confirmar una reserva existente.
+    """
+    reservation = get_object_or_404(Reservation, reservation_code=reservation_code)
+
+    if request.method == 'POST':
+        form = ConfirmReservationForm(request.POST, instance=reservation)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Reservation {reservation_code} confirmed successfully.')
+            return redirect('reservations:detail', reservation_code=reservation_code)
+    else:
+        form = ConfirmReservationForm(instance=reservation)
+
+    return render(request, 'reservations/confirm.html', {'form': form, 'reservation': reservation})
+
+@login_required
+def cancel_reservation(request, reservation_code):
+    """
+    Vista para cancelar una reserva existente
+    """
+    reservation = get_object_or_404(Reservation, reservation_code=reservation_code)
+
+    if request.method == 'POST':
+        form = CancelReservationForm(request.POST)
+        if form.is_valid():
+            # actualizamos el status de la reserva
+            reservation.status = 'cancelled'
+            reservation.cancellation_reason = form.cleaned_data['reason']
+            reservation.cancellation_comments = form.cleaned_data['comments']
+            reservation.save()
+            messages.success(request, f'Reservation {reservation_code} cancelled successfully.')
+            return redirect('reservations:detail', reservation_code=reservation_code)
+    else:
+        form = CancelReservationForm()
+
+    return render(request, 'reservations/cancel.html', {
+        'form': form,
+        'reservation': reservation
+    })
+
+@login_required
+def reservation_detail(request, reservation_code):
+    """
+    Vista para mostrar el detalle de una reserva
+    """
+    # traemos la reserva o 404 si no existe
+    reservation = get_object_or_404(Reservation, reservation_code=reservation_code)
+
+    return render(request, 'reservations/detail.html', {
+        'reservation': reservation
+    })
+
+
+
+@login_required
 def new_reservation(request, flight_id):
     """
     Vista para crear una reserva nueva.
