@@ -179,42 +179,35 @@ def complete_profile(request):
     """
     Completar el perfil de pasajero despues del registro.
     """
-    # Verificar si ya existe el perfil de pasajero
+    # Verificar si ya existe el perfil de pasajero para este user
     try:
-        passenger = Passenger.objects.get(email=request.user.email)
+        passenger = Passenger.objects.get(user=request.user)
         messages.info(request, 'You already have a complete passenger profile.')
         return redirect('core:profile')
     except Passenger.DoesNotExist:
-        pass
-    
+        passenger = Passenger(user=request.user)  # <--- clave
+
     if request.method == 'POST':
-        form = PassengerForm(request.POST)
+        form = PassengerForm(request.POST, instance=passenger)
         if form.is_valid():
-            try:
-                with transaction.atomic():
-                    passenger = form.save(commit=False)
-                    passenger.email = request.user.email
-                    if not passenger.first_name:
-                        passenger.first_name = f"{request.user.first_name} {request.user.last_name}".strip()
-                    passenger.save()
-                    
-                    messages.success(
-                        request, 
-                        'Passenger profile completed! You can now make reservations.'
-                    )
-                    return redirect('core:profile')
-                    
-            except Exception:
-                messages.error(request, 'Error saving profile. Please try again.')
+            passenger = form.save(commit=False)
+            passenger.user = request.user  # asignar el usuario
+            passenger.email = request.user.email  # opcional, si quieres forzar email
+            passenger.save()
+            messages.success(
+                request,
+                'Passenger profile completed! You can now make reservations.'
+            )
+            return redirect('core:profile')
         else:
             messages.error(request, 'Please correct the errors in the form.')
     else:
         initial_data = {
-            'first_name': f"{request.user.first_name} {request.user.last_name}".strip(),
+            'name': f"{request.user.first_name} {request.user.last_name}".strip(),
             'email': request.user.email,
         }
-        form = PassengerForm(initial=initial_data)
-    
+        form = PassengerForm(instance=passenger, initial=initial_data)
+
     return render(request, 'accounts/complete_profile.html', {'form': form})
 
 

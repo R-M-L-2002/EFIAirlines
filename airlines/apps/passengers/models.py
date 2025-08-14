@@ -1,30 +1,52 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.models import User
 
-# Create your models here.
-
-# modelo del pasajero
 class Passenger(models.Model):
-    # tipos de documento que puede tener el pasajero
     DOCUMENT_TYPES = [
-        ('dni', _('dni')),
+        ('dni', _('DNI')),
         ('passport', _('Passport')),
         ('cedula', _('ID Card')),
         ('license', _('Driver License')),
     ]
 
-    name = models.CharField(_("Full name"), max_length=100)   # nombre completo
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='passenger',
+        null=True,
+        blank=True
+    )
+    name = models.CharField(_("Full name"), max_length=100)
     document_type = models.CharField(
         _("Document type"),
         max_length=20,
         choices=DOCUMENT_TYPES,
-        default='dni'   # por defecto dni
+        default='dni'
     )
-    document = models.CharField(_("Document number"), max_length=20, unique=True) # numero de documento unico
-    email = models.EmailField(_("Email"))                   # email
-    phone = models.CharField(_("Phone"), max_length=20)     # telefono
-    birth_date = models.DateField(_("Birth date"))          # fecha de nacimiento
-    active = models.BooleanField(_("Active"), default=True) # si esta activo o no
+    document = models.CharField(_("Document number"), max_length=20, unique=True)
+    email = models.EmailField(_("Email"))
+    phone = models.CharField(_("Phone"), max_length=20)
+    birth_date = models.DateField(_("Birth date"))
+    active = models.BooleanField(_("Active"), default=True)
+
+    class Meta:
+        verbose_name = _("Passenger")
+        verbose_name_plural = _("Passengers")
+        ordering = ['name']
 
     def __str__(self):
-        return self.name  # asi mostramos el pasajero con su nombre
+        return self.name
+
+    @property
+    def profile_complete(self):
+        """Check if all required profile fields are filled"""
+        required_fields = [
+            self.name,
+            self.document_type,
+            self.document,
+            self.email,
+            self.phone,
+            self.birth_date
+        ]
+        return all(required_fields)

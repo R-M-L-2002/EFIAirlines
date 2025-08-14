@@ -32,7 +32,7 @@ def my_reservations(request):
     """
     try:
         passenger = Passenger.objects.get(email=request.user.email)
-        reservations = Reservation.objects.filter(passenger=passenger).order_by('-created_at')
+        reservations = Reservation.objects.filter(passenger=passenger).order_by('-reservation_date')
     except Passenger.DoesNotExist:
         messages.warning(request, 'You need to complete your passenger profile to see reservations.')
         return redirect('accounts:complete_profile')
