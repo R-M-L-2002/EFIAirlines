@@ -6,25 +6,54 @@ from datetime import timedelta
 # Create your models here.
 
 class Airplane(models.Model):
-    """
-    Este modelo representa un avion de la aerolinea.
-    Guarda info basica como modelo, capacidad y distribucion de asientos.
-    """
-    model = models.CharField(_("Airplane model"), max_length=100)   # modelo del avion
-    capacity = models.PositiveIntegerField(_("Capacity"))           # cantidad total de asientos
-    rows = models.PositiveIntegerField(_("Rows"))                   # cantidad de filas
-    columns = models.PositiveIntegerField(_("Columns"))             # cantidad de columnas
-    active = models.BooleanField(_("Active"), default=True)         # si el avion esta activo o no
-    created_at = models.DateTimeField(_("Created at"), auto_now_add=True) # fecha de creacion
-    updated_at = models.DateTimeField(_("Updated at"), auto_now=True)     # ultima modificacion
+    model = models.CharField(_("Airplane model"), max_length=100)
+    capacity = models.PositiveIntegerField(_("Capacity"))
+    rows = models.PositiveIntegerField(_("Rows"))
+    columns = models.PositiveIntegerField(_("Columns"))
+    active = models.BooleanField(_("Active"), default=True)
+    created_at = models.DateTimeField(_("Created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated at"), auto_now=True)
 
     class Meta:
         verbose_name = _("Airplane")
         verbose_name_plural = _("Airplanes")
-        ordering = ['model']  # ordena alfabeticamente por modelo
+        ordering = ['model']
 
     def __str__(self):
         return f"{self.model} ({self.capacity} seats)"
+
+    def create_seats(self):
+        """
+        Genera automáticamente los asientos según filas y columnas
+        y asigna tipo de asiento según la fila:
+        - First Class: filas 1-2
+        - Business Class: filas 3-5
+        - Economy Class: resto
+        """
+        letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        for row in range(1, self.rows + 1):
+            for col_index in range(self.columns):
+                if row <= 2:
+                    seat_type = 'first'
+                elif row <= 5:
+                    seat_type = 'business'
+                else:
+                    seat_type = 'economy'
+                
+                Seat.objects.create(
+                    airplane=self,
+                    seat_number=f"{row}{letters[col_index]}",
+                    row=row,
+                    column=letters[col_index],
+                    type=seat_type,
+                    status='available'
+                )
+
+    def save(self, *args, **kwargs):
+        created = self.pk is None
+        super().save(*args, **kwargs)
+        if created:
+            self.create_seats()
 
     @property
     def available_seats(self):

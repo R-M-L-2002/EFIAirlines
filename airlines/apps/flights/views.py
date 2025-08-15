@@ -116,71 +116,35 @@ def flight_list(request):
 
 
 def flight_detail(request, flight_id):
-    """
-    Vista que muestra el detalle de un vuelo puntual
-    """
-    from apps.reservations.models import Reservation
-    # si no existe el vuelo tira error 404
+    # primero traemos el vuelo, si no existe tira 404
     flight = get_object_or_404(Flight, id=flight_id)
-    
-    # agarro todos los asientos del avion del vuelo
-    seats = flight.airplane.seats.all().order_by('row', 'column')
-    
-    # busco los asientos ocupados de este vuelo
-    occupied_seats = Reservation.objects.filter(
-        flight=flight,
-        status__in=['confirmed', 'paid', 'completed']
-    ).values_list('seat_id', flat=True)
-    
-    # armo un dict con asientos separados por fila
-    seats_by_row = {}
-    for seat in seats:
-        if seat.row not in seats_by_row:
-            seats_by_row[seat.row] = []
-        
-        # reviso el estado del asiento
-        if seat.id in occupied_seats:
-            seat_status = 'occupied'
-        elif seat.status == 'maintenance':
-            seat_status = 'maintenance'
-        else:
-            seat_status = 'available'
-        
-        # lo guardo en la fila correspondiente
-        seats_by_row[seat.row].append({
-            'seat': seat,
-            'status': seat_status,
-            'price': float(flight.base_price) * seat.extra_price
-        })
-    
-    # calculo totales de asientos
-    total_seats = seats.count()
-    available_seats = total_seats - len(occupied_seats)
-    seats_by_type = {
-        'first_class': seats.filter(seat_type='first_class').count(),
-        'business': seats.filter(seat_type='business').count(),
-        'economy': seats.filter(seat_type='economy').count(),
+
+    # traemos todos los asientos de ese avion
+    seats = flight.airplane.seats.all()
+
+    # contamos cuantos asientos hay de cada tipo
+    seat_counts = {
+        'first_class': seats.filter(type='first').count(),      # asientos first class
+        'business_class': seats.filter(type='business').count(),# asientos business
+        'economy_class': seats.filter(type='economy').count(),  # asientos economy
     }
-    
-    # chequeo si el usuario puede reservar
-    can_book = (
-        request.user.is_authenticated and
-        flight.status in ['scheduled', 'boarding'] and
-        flight.departure_date > timezone.now() and
-        available_seats > 0
-    )
-    
+
+    # opcional: tambien podrias contar cuántos estan disponibles
+    available_counts = {
+        'first_class': seats.filter(type='first', status='available').count(),
+        'business_class': seats.filter(type='business', status='available').count(),
+        'economy_class': seats.filter(type='economy', status='available').count(),
+    }
+
+    # ahora armamos el contexto para la plantilla
     context = {
         'flight': flight,
-        'seats_by_row': dict(sorted(seats_by_row.items())),
-        'total_seats': total_seats,
-        'available_seats': available_seats,
-        'occupied_seats': len(occupied_seats),
-        'seats_by_type': seats_by_type,
-        'can_book': can_book,
-        'base_price': flight.base_price,
+        'seat_counts': seat_counts,
+        'available_counts': available_counts,
+        'seats': seats,  # si queres mostrar todos los asientos
     }
-    
+
+    # renderizamos la plantilla 'flights/detail.html'
     return render(request, 'flights/detail.html', context)
 
 
