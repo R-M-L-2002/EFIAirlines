@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -202,6 +203,15 @@
             transform: translateY(-3px);
             background-color: #e0e0e0;
         }
+        /* Travel Promotions - imágenes más grandes y cards alargadas */
+        .promotions-section .card {
+            min-height: 380px; /* aumenta la altura total */
+        }
+
+        .promotions-section .card img {
+            height: 220px; /* imagen más alta */
+            object-fit: cover;
+        }
     </style>
 </head>
 <body>
@@ -221,7 +231,7 @@
                     {% if user.is_authenticated %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'reservations:my_reservations' %}"><i class="fas fa-ticket-alt"></i> My Reservations</a></li>
                     {% endif %}
-                    
+
                     {% if request.user.is_superuser %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
