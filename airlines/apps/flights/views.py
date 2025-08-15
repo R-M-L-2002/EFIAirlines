@@ -4,7 +4,8 @@ from django.db.models import Q
 from django.utils import timezone
 from datetime import datetime
 from apps.flights.models import Flight, Airplane, Seat
-
+from apps.flights.forms import AirplaneForm, FlightForm
+from django.contrib.auth.decorators import user_passes_test
 # Create your views here.
 
 """
@@ -16,6 +17,33 @@ Este archivo maneja:
 - Busqueda y filtrado de vuelos
 """
 
+# Decorador para superusuarios
+def superuser_required(view_func):
+    return user_passes_test(lambda u: u.is_superuser)(view_func)
+
+
+@superuser_required
+def create_airplane(request):
+    if request.method == 'POST':
+        form = AirplaneForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('flights:create_flight')  # redirige a crear vuelo después
+    else:
+        form = AirplaneForm()
+    return render(request, 'flights/create_airplane.html', {'form': form})
+
+
+@superuser_required
+def create_flight(request):
+    if request.method == 'POST':
+        form = FlightForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('flights:list')
+    else:
+        form = FlightForm()
+    return render(request, 'flights/create_flight.html', {'form': form})
 
 def flight_list(request):
     """
