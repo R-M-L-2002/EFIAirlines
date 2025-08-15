@@ -183,7 +183,7 @@ def new_reservation(request, flight_id):
             seats_by_row[seat.row] = []
         
         # calculo el precio según el asiento
-        seat_price = float(flight.base_price) * seat.extra_price
+        seat_price = flight.base_price + seat.extra_price
         seats_by_row[seat.row].append({
             'seat': seat,
             'price': seat_price,

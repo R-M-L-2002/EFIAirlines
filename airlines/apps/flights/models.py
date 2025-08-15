@@ -166,6 +166,12 @@ class Seat(models.Model):
         choices=SEAT_STATUS,
         default='available'
     )
+    extra_price = models.DecimalField(
+        _("Extra price"),
+        max_digits=10,
+        decimal_places=2,
+        default=0.0
+    )
 
     class Meta:
         verbose_name = _("Seat")
