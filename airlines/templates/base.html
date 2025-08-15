@@ -221,16 +221,19 @@
                     {% if user.is_authenticated %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'reservations:my_reservations' %}"><i class="fas fa-ticket-alt"></i> My Reservations</a></li>
                     {% endif %}
+                    
                     {% if request.user.is_superuser %}
-                    <div class="admin-panel mb-3">
-                        <h5>Admin Options</h5>
-                        <ul>
-                            <li><a href="{% url 'flights:create_airplane' %}">Create Airplane</a></li>
-                            <li><a href="{% url 'flights:create_flight' %}">Create Flight</a></li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs"></i> Admin Options
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                            <li><a class="dropdown-item" href="{% url 'flights:create_airplane' %}">Create Airplane</a></li>
+                            <li><a class="dropdown-item" href="{% url 'flights:create_flight' %}">Create Flight</a></li>
                         </ul>
-                    </div>
+                    </li>
                     {% endif %}
-                </ul>
+                                    </ul>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
                         <li class="nav-item dropdown">
