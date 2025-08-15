@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from django.contrib.auth.models import User
+from datetime import date
 
 class Passenger(models.Model):
     DOCUMENT_TYPES = [
@@ -43,6 +44,15 @@ class Passenger(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def age(self):
+        """Calcula la edad del pasajero a partir de birth_date"""
+        if not self.birth_date:
+            return None
+        today = date.today()
+        # Resta 1 si aún no cumplió años este año
+        return today.year - self.birth_date.year - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
+    
     @property
     def profile_complete(self):
         """Check if all required profile fields are filled"""

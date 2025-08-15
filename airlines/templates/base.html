@@ -24,6 +24,62 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
+                    /* Navbar */
+            .navbar {
+                background: linear-gradient(135deg, #0071c2, #005b9a);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                margin-bottom: 0 !important;
+                padding: 0.4rem 1rem;
+            }
+            .navbar-brand {
+                font-weight: 700;
+                font-size: 1.4rem;
+                padding: 6px 12px;
+                border-radius: 8px;
+                transition: none;
+            }
+            .navbar-brand:hover {
+                background-color: transparent;
+            }
+
+            /* Estilo tipo "botón" para los links */
+            .navbar-nav .nav-link {
+                font-weight: 500;
+                padding: 8px 18px;
+                margin: 0 10px;
+                border-radius: 8px;
+                transition: background-color 0.3s ease, transform 0.2s ease;
+            }
+            .navbar-nav .nav-link:hover {
+                background-color: rgba(255,255,255,0.15);
+                color: #ffd200 !important;
+                transform: translateY(-2px);
+            }
+
+            /* Espaciado general */
+            .navbar .container-fluid {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+
+            /* Dropdown estilizado */
+            .dropdown-menu {
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                padding: 0.5rem 0;
+            }
+            .dropdown-item {
+                padding: 10px 20px;
+            }
+            .dropdown-item:hover {
+                background-color: rgba(0,113,194,0.1);
+            }
+
+            /* Íconos más alineados */
+            .navbar-nav .nav-link i {
+                margin-right: 6px;
+            }
+
         /* Navbar */
         .navbar {
             background: linear-gradient(135deg,#0071c2,#005b9a);
