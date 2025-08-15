@@ -1,0 +1,76 @@
+.seat {
+    width: 40px;
+    height: 40px;
+    margin: 3px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+.seat.available {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+.seat.available:hover {
+    background-color: #c3e6cb;
+    transform: scale(1.1);
+}
+.seat.occupied {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+    cursor: not-allowed;
+}
+.seat.selected {
+    background-color: #007bff;
+    border-color: #0056b3;
+    color: white;
+    transform: scale(1.1);
+}
+.seat.first {
+    border-width: 3px;
+}
+.seat.business {
+    border-style: dashed;
+}
+.row-seat {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.row-number {
+    width: 40px;
+    text-align: center;
+    font-weight: bold;
+    margin-right: 15px;
+}
+.aisle {
+    width: 30px;
+}
+.seat-info {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    min-width: 250px;
+    z-index: 1000;
+}
+.seat-map {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 30px;
+    margin: 20px 0;
+}

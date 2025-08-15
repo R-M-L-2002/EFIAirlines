@@ -1,85 +1,87 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}New Reservation - {{ flight.flight_number }} - Virtual Airline{% endblock %}
 
 {% block extra_css %}
 <style>
     .seat {
-        width: 40px;
-        height: 40px;
-        margin: 3px;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-    }
-    .seat.available {
-        background-color: #d4edda;
-        border-color: #28a745;
-        color: #155724;
-    }
-    .seat.available:hover {
-        background-color: #c3e6cb;
-        transform: scale(1.1);
-    }
-    .seat.occupied {
-        background-color: #f8d7da;
-        border-color: #dc3545;
-        color: #721c24;
-        cursor: not-allowed;
-    }
-    .seat.selected {
-        background-color: #007bff;
-        border-color: #0056b3;
-        color: white;
-        transform: scale(1.1);
-    }
-    .seat.first {
-        border-width: 3px;
-    }
-    .seat.business {
-        border-style: dashed;
-    }
-    .row-seat {
-        margin-bottom: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .row-number {
-        width: 40px;
-        text-align: center;
-        font-weight: bold;
-        margin-right: 15px;
-    }
-    .aisle {
-        width: 30px;
-    }
-    .seat-info {
-        position: fixed;
-        top: 50%;
-        right: 20px;
-        transform: translateY(-50%);
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        min-width: 250px;
-        z-index: 1000;
-    }
-    .seat-map {
-        background: #f8f9fa;
-        border-radius: 15px;
-        padding: 30px;
-        margin: 20px 0;
-    }
+    width: 40px;
+    height: 40px;
+    margin: 3px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+.seat.available {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+.seat.available:hover {
+    background-color: #c3e6cb;
+    transform: scale(1.1);
+}
+.seat.occupied {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+    cursor: not-allowed;
+}
+.seat.selected {
+    background-color: #007bff;
+    border-color: #0056b3;
+    color: white;
+    transform: scale(1.1);
+}
+.seat.first {
+    border-width: 3px;
+}
+.seat.business {
+    border-style: dashed;
+}
+.row-seat {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.row-number {
+    width: 40px;
+    text-align: center;
+    font-weight: bold;
+    margin-right: 15px;
+}
+.aisle {
+    width: 30px;
+}
+.seat-info {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    min-width: 250px;
+    z-index: 1000;
+}
+.seat-map {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 30px;
+    margin: 20px 0;
+}
+
 </style>
 {% endblock %}
 
@@ -193,15 +195,15 @@
                                 {% if forloop.counter == 3 %}
                                     <div class="aisle"></div>
                                 {% endif %}
-                                <div class="seat {% if seat_info.available %}available{% else %}occupied{% endif %} {{ seat_info.seat.type }}"
-                                     data-seat-id="{{ seat_info.seat.id }}"
-                                     data-price="{{ seat_info.price }}"
-                                     data-type="{{ seat_info.seat.get_type_display }}"
-                                     data-number="{{ seat_info.seat.number }}"
-                                     {% if seat_info.available %}onclick="selectSeat(this)"{% endif %}
-                                     title="Seat {{ seat_info.seat.number }} - {{ seat_info.seat.get_type_display }} - ${{ seat_info.price|floatformat:0 }}">
+                                <div class="seat {% if seat_info.available %}available{% endif %} {{ seat_info.seat.type }}"
+                                    data-seat-id="{{ seat_info.seat.id }}"
+                                    data-price="{{ seat_info.price }}"
+                                    data-type="{{ seat_info.seat.get_type_display }}"
+                                    data-number="{{ seat_info.seat.number }}"
+                                    title="Seat {{ seat_info.seat.number }} - {{ seat_info.seat.get_type_display }} - ${{ seat_info.price|floatformat:0 }}">
                                     {{ seat_info.seat.number }}
                                 </div>
+
                             {% endfor %}
                         </div>
                         {% endfor %}
@@ -245,63 +247,75 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
 <script>
 let selectedSeatElement = null;
 
-function selectSeat(element) {
-    // First check seat availability
-    checkAvailability(element.dataset.seatId, function(isAvailable) {
-        if (!isAvailable) {
-            return;
-        }
-        
-        // Deselect previous seat if any
-        if (selectedSeatElement) {
-            selectedSeatElement.classList.remove('selected');
-        }
-        
-        // Select new seat
-        element.classList.add('selected');
-        selectedSeatElement = element;
-        
-        // Update form field
-        document.getElementById('selectedSeat').value = element.dataset.seatId;
-        
-        // Enable reserve button
-        document.getElementById('btnReserve').disabled = false;
-        
-        // Update info panel
-        updateSeatInfo(element);
-    });
+// Verifica si un asiento está disponible
+function checkAvailability(seatDiv) {
+    return !seatDiv.classList.contains('occupied');
 }
 
+// Selecciona un asiento
+function selectSeat(element) {
+    if (!checkAvailability(element)) {
+        alert("This seat is not available.");
+        return;
+    }
+
+    // Deselecciona asiento anterior
+    if (selectedSeatElement) {
+        selectedSeatElement.classList.remove('selected');
+    }
+
+    element.classList.add('selected');
+    selectedSeatElement = element;
+
+    // Actualiza input oculto para enviar al servidor
+    const seatInput = document.getElementById('selectedSeat');
+    if (seatInput) {
+        seatInput.value = element.dataset.seatId;
+    }
+
+    // Habilita el botón de reserva
+    const btnReserve = document.getElementById('btnReserve');
+    if (btnReserve) {
+        btnReserve.disabled = false;
+    }
+
+    // Actualiza panel lateral con info del asiento
+    updateSeatInfo(element);
+}
+
+// Actualiza información del asiento seleccionado
 function updateSeatInfo(element) {
     const infoPanel = document.getElementById('seatInfo');
-    const price = parseFloat(element.dataset.price);
-    
+    const price = parseFloat(element.dataset.price) || 0;
+    // Determina clase del asiento
+    const seatClass = element.dataset.type || 'economy';
+
     infoPanel.innerHTML = `
         <div class="text-center">
-            <div class="seat ${element.classList[1]} ${element.classList[2]} mb-3" 
+            <div class="seat mb-3" 
                  style="font-size: 16px; width: 60px; height: 60px;">
                 ${element.dataset.number}
             </div>
             <h5>Seat ${element.dataset.number}</h5>
-            <p class="mb-2"><strong>Class:</strong> ${element.dataset.type}</p>
-            <h4 class="text-success mb-3">$${price.toLocaleString('en-US')}</h4>
+            <p class="mb-2"><strong>Class:</strong> ${seatClass}</p>
+            <h4 class="text-success mb-3">$${price.toFixed(2)}</h4>
             
             <div class="alert alert-info">
                 <small>
                     <i class="fas fa-info-circle"></i>
-                    ${getClassInfo(element.classList[2])}
+                    ${getClassInfo(seatClass)}
                 </small>
             </div>
         </div>
     `;
 }
 
+// Devuelve info según clase
 function getClassInfo(className) {
-    switch(className) {
+    switch(className.toLowerCase()) {
         case 'first':
             return 'Includes: Gourmet meal, premium drinks, reclining seat, extra baggage.';
         case 'business':
@@ -313,13 +327,17 @@ function getClassInfo(className) {
     }
 }
 
-// Initialize any seat click handlers
+// Inicializa eventos y tooltips al cargar la página
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.seat.available').forEach(seat => {
+    const seats = document.querySelectorAll('.seat.available');
+    seats.forEach(seat => {
         seat.addEventListener('click', function() {
             selectSeat(this);
         });
+        // Tooltip con precio
+        const price = parseFloat(seat.dataset.price) || 0;
+        seat.title = `Seat ${seat.dataset.number} - ${seat.dataset.type || 'Economy'} - $${price.toFixed(2)}`;
     });
 });
 </script>
-{% endblock %}
+
