@@ -109,7 +109,7 @@ def cancel_reservation(request, reservation_code):
             reservation.cancellation_comments = form.cleaned_data['comments']
             reservation.save()
             messages.success(request, f'Reservation {reservation_code} cancelled successfully.')
-            return redirect('reservations:detail', reservation_code=reservation_code)
+            return redirect('reservations:detail')
     else:
         form = CancelReservationForm()
 
