@@ -69,13 +69,15 @@ class FlightAdmin(admin.ModelAdmin):
         'formatted_duration',
         'status',
         'base_price',
+        'is_active',
     ]
     list_filter = [
         'status',
         'origin',
         'destination',
         'departure_date',
-        'airplane__model'
+        'airplane__model',
+        'is_active',
     ]
     search_fields = [
         'flight_number',
@@ -114,7 +116,6 @@ class FlightAdmin(admin.ModelAdmin):
             return f"{hours}h {minutes}m"
         return "-"
     formatted_duration.short_description = 'Duration'
-
 
 @admin.register(Seat)
 class SeatAdmin(admin.ModelAdmin):

@@ -70,20 +70,28 @@ def my_reservations(request):
 @login_required
 def confirm_reservation(request, reservation_code):
     """
-    Vista para confirmar una reserva existente.
+    Vista para confirmar una reserva pendiente.
     """
     reservation = get_object_or_404(Reservation, reservation_code=reservation_code)
 
     if request.method == 'POST':
         form = ConfirmReservationForm(request.POST, instance=reservation)
         if form.is_valid():
-            form.save()
+            # Cambiamos el estado
+            reservation.status = Reservation.STATUS_CONFIRMED
+            reservation.save()
             messages.success(request, f'Reservation {reservation_code} confirmed successfully.')
-            return redirect('reservations:detail', reservation_code=reservation_code)
+            return redirect('reservations:my_reservations')
+        else:
+            print(form.errors)  # Para debug
     else:
         form = ConfirmReservationForm(instance=reservation)
 
-    return render(request, 'reservations/confirm.html', {'form': form, 'reservation': reservation})
+    return render(request, 'reservations/confirm.html', {
+        'form': form,
+        'reservation': reservation
+    })
+
 
 @login_required
 def cancel_reservation(request, reservation_code):
@@ -219,7 +227,8 @@ def new_reservation(request, flight_id):
                     passenger=passenger,
                     seat=seat,
                     status='pending',
-                    notes=request.POST.get('notes', '')
+                    notes=request.POST.get('notes', ''),
+                    total_price=flight.base_price + seat.extra_price
                 )
                 
                 messages.success(
@@ -232,6 +241,7 @@ def new_reservation(request, flight_id):
         except Seat.DoesNotExist:
             messages.error(request, 'Invalid seat.')
         except Exception as e:
+            print("ERROR:", e)
             messages.error(request, 'Error creating the reservation. Please try again.')
     
     # contexto para renderizar el template

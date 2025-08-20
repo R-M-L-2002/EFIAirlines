@@ -66,6 +66,20 @@ class Reservation(models.Model):
     total_price = models.DecimalField(_("Total price"), max_digits=10, decimal_places=2)
     reservation_date = models.DateTimeField(_("Reservation date"), auto_now_add=True)
     expiration_date = models.DateTimeField(_("Expiration date"), blank=True)
+    notes = models.TextField(_("Notes"), blank=True, null=True)
+
+    # <- campos nuevos para pagos
+    payment_method = models.CharField(
+        _("Payment Method"),
+        max_length=20,
+        blank=True,
+        null=True
+    )
+    payment_notes = models.TextField(
+        _("Payment Notes"),
+        blank=True,
+        null=True
+    )
 
     class Meta:
         verbose_name = _("Reservation")

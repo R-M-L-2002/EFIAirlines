@@ -3,47 +3,57 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.utils import timezone
 from datetime import datetime
+from django.contrib.auth.decorators import user_passes_test
+from django.contrib import messages
+
 from apps.flights.models import Flight, Airplane, Seat
 from apps.flights.forms import AirplaneForm, FlightForm
-from django.contrib.auth.decorators import user_passes_test
 
-# Decorador para superusuarios
+# decorador para permitir solo superusuarios
 def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser)(view_func)
 
+# vista para crear un avion nuevo
 @superuser_required
 def create_airplane(request):
     if request.method == 'POST':
         form = AirplaneForm(request.POST)
         if form.is_valid():
+            # guardamos el avion y creamos los asientos automaticamente
             airplane = form.save()
-            # Crear automáticamente los asientos con precio según clase
             create_seats_for_airplane(airplane)
             return redirect('flights:create_flight')
     else:
         form = AirplaneForm()
     return render(request, 'flights/create_airplane.html', {'form': form})
 
+# funcion para crear los asientos del avion segun filas y columnas
 def create_seats_for_airplane(airplane):
-    """
-    Genera automáticamente los asientos de un avión y asigna tipo y precio.
-    """
-    letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    # borramos los asientos antiguos por si ya existian
+    Seat.objects.filter(airplane=airplane).delete()
+    letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    
     for row in range(1, airplane.rows + 1):
         for col_index in range(airplane.columns):
+            if col_index >= len(letters):  # seguridad si hay muchas columnas
+                continue
+            seat_number = f"{row}{letters[col_index]}"
+            
+            # asignamos tipo y precio segun la fila
             if row <= 2:
-                seat_type = 'first'
-                price = Decimal('100.00')
+                seat_type = "first"
+                price = 300
             elif row <= 5:
-                seat_type = 'business'
-                price = Decimal('50.00')
+                seat_type = "business"
+                price = 200
             else:
-                seat_type = 'economy'
-                price = Decimal('0.00')
+                seat_type = "economy"
+                price = 100
 
+            # creamos el asiento
             Seat.objects.create(
                 airplane=airplane,
-                seat_number=f"{row}{letters[col_index]}",
+                seat_number=seat_number,
                 row=row,
                 column=letters[col_index],
                 type=seat_type,
@@ -51,6 +61,7 @@ def create_seats_for_airplane(airplane):
                 extra_price=price
             )
 
+# vista para crear un vuelo nuevo
 @superuser_required
 def create_flight(request):
     if request.method == 'POST':
@@ -62,17 +73,22 @@ def create_flight(request):
         form = FlightForm()
     return render(request, 'flights/create_flight.html', {'form': form})
 
+# lista de vuelos con filtros y paginacion
 def flight_list(request):
+    # obtenemos los filtros de la url
     origin = request.GET.get('origin', '')
     destination = request.GET.get('destination', '')
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
     status = request.GET.get('status', '')
 
+    # solo vuelos activos y con estado programado o embarcando
     flights = Flight.objects.select_related('airplane').filter(
-        status__in=['scheduled', 'boarding']
+        status__in=['scheduled', 'boarding'],
+        is_active=True
     )
 
+    # aplicamos filtros si el usuario eligio alguno
     if origin:
         flights = flights.filter(origin__icontains=origin)
     if destination:
@@ -92,14 +108,17 @@ def flight_list(request):
     if status:
         flights = flights.filter(status=status)
 
+    # ordenamos por fecha de salida
     flights = flights.order_by('departure_date')
     paginator = Paginator(flights, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    # ciudades para los selects de filtro
     origin_cities = Flight.objects.values_list('origin', flat=True).distinct().order_by('origin')
     destination_cities = Flight.objects.values_list('destination', flat=True).distinct().order_by('destination')
 
+    # armamos el context para el template
     context = {
         'page_obj': page_obj,
         'origin_cities': origin_cities,
@@ -116,16 +135,19 @@ def flight_list(request):
     }
     return render(request, 'flights/list.html', context)
 
+# detalle del vuelo y asientos
 def flight_detail(request, flight_id):
     flight = get_object_or_404(Flight, id=flight_id)
     seats = flight.airplane.seats.all()
 
+    # contamos cantidad total de asientos por clase
     seat_counts = {
         'first_class': seats.filter(type='first').count(),
         'business_class': seats.filter(type='business').count(),
         'economy_class': seats.filter(type='economy').count(),
     }
 
+    # contamos cuantos estan disponibles
     available_counts = {
         'first_class': seats.filter(type='first', status='available').count(),
         'business_class': seats.filter(type='business', status='available').count(),
@@ -140,33 +162,13 @@ def flight_detail(request, flight_id):
     }
     return render(request, 'flights/detail.html', context)
 
-def search_flights(request):
-    if request.method == 'POST':
-        origin = request.POST.get('origin', '')
-        destination = request.POST.get('destination', '')
-        departure_date = request.POST.get('departure_date', '')
-
-        params = []
-        if origin:
-            params.append(f'origin={origin}')
-        if destination:
-            params.append(f'destination={destination}')
-        if departure_date:
-            params.append(f'date_from={departure_date}')
-
-        url = '/flights/'
-        if params:
-            url += '?' + '&'.join(params)
-
-        return redirect(url)
-
-    cities = set()
-    for flight in Flight.objects.all():
-        cities.add(flight.origin)
-        cities.add(flight.destination)
-
-    context = {
-        'cities': sorted(cities),
-        'min_date': timezone.now().date(),
-    }
-    return render(request, 'flights/search.html', context)
+# vista para activar o desactivar un vuelo
+@superuser_required
+def toggle_flight_active(request, flight_id):
+    flight = get_object_or_404(Flight, id=flight_id)
+    # cambiamos el estado activo
+    flight.is_active = not flight.is_active
+    flight.save()
+    status = "activado" if flight.is_active else "desactivado"
+    messages.success(request, f"Vuelo {flight.flight_number} {status} con exito.")
+    return redirect('flights:list')

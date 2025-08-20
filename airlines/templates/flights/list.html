@@ -154,6 +154,18 @@
                         <i class="fas fa-times"></i> Sold Out
                     </button>
                     {% endif %}
+
+                    {# boton de activar/desactivar solo para staff #}
+                    {% if user.is_staff %}
+                    <a href="{% url 'flights:toggle_flight_active' flight.id %}" 
+                       class="btn btn-outline-warning mt-1">
+                        {% if flight.is_active %}
+                            <i class="fas fa-eye-slash"></i> Deactivate
+                        {% else %}
+                            <i class="fas fa-eye"></i> Activate
+                        {% endif %}
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

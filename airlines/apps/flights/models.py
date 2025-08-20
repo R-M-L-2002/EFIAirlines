@@ -84,20 +84,29 @@ class Flight(models.Model):
         verbose_name=_("Airplane"),
         default=1
     )
-    flight_number = models.CharField(_("Flight number"), max_length=10, unique=True) # numero de vuelo
-    origin = models.CharField(_("Origin"), max_length=100)                             # ciudad de origen
-    destination = models.CharField(_("Destination"), max_length=100)                   # ciudad de destino
-    departure_date = models.DateTimeField(_("Departure date"))                          # fecha y hora de salida
-    arrival_date = models.DateTimeField(_("Arrival date"))                               # fecha y hora de llegada
-    duration = models.DurationField(_("Flight duration"), null=True, blank=True)        # duracion calculada automaticamente
+    flight_number = models.CharField(_("Flight number"), max_length=10, unique=True)
+    origin = models.CharField(_("Origin"), max_length=100)
+    destination = models.CharField(_("Destination"), max_length=100)
+    departure_date = models.DateTimeField(_("Departure date"))
+    arrival_date = models.DateTimeField(_("Arrival date"))
+    duration = models.DurationField(_("Flight duration"), null=True, blank=True)
     status = models.CharField(
         _("Status"),
         max_length=20,
         choices=FLIGHT_STATUS,
         default='scheduled'
     )
-    base_price = models.DecimalField(_("Base price"), max_digits=10, decimal_places=2) # precio base del vuelo
-    created_at = models.DateTimeField(_("Created at"), auto_now_add=True)              # fecha de creacion
+    base_price = models.DecimalField(_("Base price"), max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(
+        _("Active"),
+        default=True
+    )
+    created_at = models.DateTimeField(_("Created at"), auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if self.departure_date and self.arrival_date:
+            self.duration = self.arrival_date - self.departure_date
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("Flight")

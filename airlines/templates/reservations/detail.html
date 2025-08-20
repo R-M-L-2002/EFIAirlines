@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Reservation Detail: {{ reservation.reservation_code }}</h1>
+
+<p>Passenger: {{ reservation.passenger.first_name }} {{ reservation.passenger.last_name }}</p>
+<p>Flight: {{ reservation.flight.code }}</p>
+<p>Seat: {{ reservation.seat.row }}{{ reservation.seat.column }}</p>
+<p>Status: {{ reservation.status }}</p>
+<p>Total Price: ${{ reservation.total_price }}</p>
+
+<a href="{% url 'reservations:confirm' reservation.reservation_code %}" class="btn btn-primary">
+    Confirm Reservation
+</a>
+
+<a href="{% url 'reservations:cancel' reservation.reservation_code %}" class="btn btn-danger">
+    Cancel Reservation
+</a>
+{% endblock %}
