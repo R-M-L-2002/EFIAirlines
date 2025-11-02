@@ -13,11 +13,6 @@ import json
 Vistas para reportes del sistema de aerolinea
 """
 
-from apps.flights.models import Flight, Airplane, Seat
-from apps.passengers.models import Passenger
-from apps.reservations.models import Reservation, Ticket
-from django.contrib.auth.models import User
-
 from services.report import ReportService
 
 report_service = ReportService()
