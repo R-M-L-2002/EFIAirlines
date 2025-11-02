@@ -23,4 +23,10 @@ urlpatterns = [
     
     # AJAX
     path('check-username/', views.check_username_availability, name='check_username'),
+    
+    # User Management (Admin only)
+    path('users/', views.manage_users, name='manage_users'),
+    path('users/create/', views.create_user, name='create_user'),
+    path('users/<int:user_id>/edit/', views.edit_user, name='edit_user'),
+    path('users/<int:user_id>/delete/', views.delete_user, name='delete_user'),
 ]

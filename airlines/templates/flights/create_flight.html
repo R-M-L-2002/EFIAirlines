@@ -1,12 +1,178 @@
 {% extends 'base.html' %}
 
-{% block title %}Create Flight{% endblock %}
+{% block title %}Create Flight - Airline: The Primos{% endblock %}
 
 {% block content %}
-<h2>Create Flight</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success">Create Flight</button>
-</form>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <h3 class="mb-0">
+                        <i class="fas fa-plane-departure"></i> Schedule New Flight
+                    </h3>
+                    <p class="mb-0 mt-2 small">Create a new flight schedule</p>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.flight_number.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-hashtag"></i> Flight Number
+                                </label>
+                                {{ form.flight_number }}
+                                {% if form.flight_number.errors %}
+                                    <div class="text-danger small mt-1">{{ form.flight_number.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">e.g., TP001, TP002</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.airplane.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-plane"></i> Aircraft
+                                </label>
+                                {{ form.airplane }}
+                                {% if form.airplane.errors %}
+                                    <div class="text-danger small mt-1">{{ form.airplane.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.origin.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-map-marker-alt"></i> Origin
+                                </label>
+                                {{ form.origin }}
+                                {% if form.origin.errors %}
+                                    <div class="text-danger small mt-1">{{ form.origin.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.destination.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-map-marker-alt"></i> Destination
+                                </label>
+                                {{ form.destination }}
+                                {% if form.destination.errors %}
+                                    <div class="text-danger small mt-1">{{ form.destination.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.departure_date.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-calendar"></i> Departure Date
+                                </label>
+                                {{ form.departure_date }}
+                                {% if form.departure_date.errors %}
+                                    <div class="text-danger small mt-1">{{ form.departure_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.departure_time.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-clock"></i> Departure Time
+                                </label>
+                                {{ form.departure_time }}
+                                {% if form.departure_time.errors %}
+                                    <div class="text-danger small mt-1">{{ form.departure_time.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.arrival_date.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-calendar"></i> Arrival Date
+                                </label>
+                                {{ form.arrival_date }}
+                                {% if form.arrival_date.errors %}
+                                    <div class="text-danger small mt-1">{{ form.arrival_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.arrival_time.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-clock"></i> Arrival Time
+                                </label>
+                                {{ form.arrival_time }}
+                                {% if form.arrival_time.errors %}
+                                    <div class="text-danger small mt-1">{{ form.arrival_time.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.base_price.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-dollar-sign"></i> Base Price
+                                </label>
+                                {{ form.base_price }}
+                                {% if form.base_price.errors %}
+                                    <div class="text-danger small mt-1">{{ form.base_price.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Economy class price</small>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.status.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-info-circle"></i> Status
+                                </label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                    <div class="text-danger small mt-1">{{ form.status.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-toggle-on"></i> Active
+                                </label>
+                                <div class="form-check mt-2">
+                                    {{ form.is_active }}
+                                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                        Flight is active
+                                    </label>
+                                </div>
+                                {% if form.is_active.errors %}
+                                    <div class="text-danger small mt-1">{{ form.is_active.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'flights:list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="fas fa-save"></i> Create Flight
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        padding: 0.6rem 0.75rem;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #623ACF;
+        box-shadow: 0 0 0 0.2rem rgba(98, 58, 207, 0.25);
+    }
+    .card {
+        border-radius: 15px;
+    }
+</style>
 {% endblock %}

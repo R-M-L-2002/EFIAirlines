@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ airplane.model }} - Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-plane"></i> {{ airplane.model }}</h2>
+            <p class="text-muted">Airplane Details and Seat Layout</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'flights:airplane_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Fleet
+            </a>
+            <a href="{% url 'flights:edit_airplane' airplane.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+        </div>
+    </div>
+
+    <!-- Airplane Information -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card card-hover">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Technical Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Model:</th>
+                            <td>{{ airplane.model }}</td>
+                        </tr>
+                        <tr>
+                            <th>Capacity:</th>
+                            <td>{{ airplane.capacity }} passengers</td>
+                        </tr>
+                        <tr>
+                            <th>Layout:</th>
+                            <td>{{ airplane.rows }} rows × {{ airplane.columns }} columns</td>
+                        </tr>
+                        <tr>
+                            <th>Total Seats:</th>
+                            <td>{{ total_seats }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if airplane.active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Created:</th>
+                            <td>{{ airplane.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card card-hover">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chair"></i> Seat Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <h6>By Class:</h6>
+                    <ul class="list-unstyled">
+                        <li><span class="badge bg-warning">First Class:</span> {{ seat_stats.first }} seats</li>
+                        <li><span class="badge bg-info">Business Class:</span> {{ seat_stats.business }} seats</li>
+                        <li><span class="badge bg-secondary">Economy Class:</span> {{ seat_stats.economy }} seats</li>
+                    </ul>
+                    <hr>
+                    <h6>By Status:</h6>
+                    <ul class="list-unstyled">
+                        <li><span class="badge bg-success">Available:</span> {{ status_stats.available }} seats</li>
+                        <li><span class="badge bg-primary">Reserved:</span> {{ status_stats.reserved }} seats</li>
+                        <li><span class="badge bg-dark">Occupied:</span> {{ status_stats.occupied }} seats</li>
+                        <li><span class="badge bg-danger">Maintenance:</span> {{ status_stats.maintenance }} seats</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seat Layout -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-th"></i> Seat Layout</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <span class="badge bg-warning me-2">First Class</span>
+                <span class="badge bg-info me-2">Business Class</span>
+                <span class="badge bg-secondary me-2">Economy Class</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered text-center">
+                    <thead>
+                        <tr>
+                            <th>Row</th>
+                            {% for col in seat_layout|first|last %}
+                            <th>{{ col.column }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row, seats in seat_layout.items %}
+                        <tr>
+                            <td><strong>{{ row }}</strong></td>
+                            {% for seat in seats %}
+                            <td>
+                                <span class="badge 
+                                    {% if seat.type == 'first' %}bg-warning
+                                    {% elif seat.type == 'business' %}bg-info
+                                    {% else %}bg-secondary{% endif %}
+                                    {% if seat.status != 'available' %}text-decoration-line-through{% endif %}">
+                                    {{ seat.seat_number }}
+                                </span>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Associated Flights -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-plane-departure"></i> Recent Flights (Last 10)</h5>
+        </div>
+        <div class="card-body">
+            {% if flights %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Flight Number</th>
+                            <th>Route</th>
+                            <th>Departure</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for flight in flights %}
+                        <tr>
+                            <td><strong>{{ flight.flight_number }}</strong></td>
+                            <td>{{ flight.origin }} → {{ flight.destination }}</td>
+                            <td>{{ flight.departure_date|date:"M d, Y H:i" }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if flight.status == 'scheduled' %}bg-primary
+                                    {% elif flight.status == 'boarding' %}bg-info
+                                    {% elif flight.status == 'departed' %}bg-warning
+                                    {% elif flight.status == 'arrived' %}bg-success
+                                    {% elif flight.status == 'cancelled' %}bg-danger
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ flight.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No flights assigned to this airplane yet.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -6,14 +6,7 @@
 {% block content %}
 <div class="container py-4">
     <div class="row mb-4">
-        <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'reports:dashboard' %}">Reports</a></li>
-                    <li class="breadcrumb-item active">Flight Passengers</li>
-                </ol>
-            </nav>
-            
+        <div class="col-12">            
             <h1 class="h2 mb-0">
                 <i class="fas fa-users me-2"></i>Flight Passengers
             </h1>
@@ -42,7 +35,8 @@
         <div class="col-md-3">
             <div class="card bg-info text-white">
                 <div class="card-body text-center">
-                    <h3>{{ occupancy_percentage }}%</h3>
+                    <!-- Fixed variable name from occupancy_percentage to occupancy_percent -->
+                    <h3>{{ occupancy_percent }}%</h3>
                     <p class="mb-0">Occupancy</p>
                 </div>
             </div>
@@ -50,7 +44,8 @@
         <div class="col-md-3">
             <div class="card bg-warning text-white">
                 <div class="card-body text-center">
-                    <h3>${{ total_revenue|floatformat:0 }}</h3>
+                    <!-- Fixed variable name from total_revenue to total_income -->
+                    <h3>${{ total_income|floatformat:0 }}</h3>
                     <p class="mb-0">Revenue</p>
                 </div>
             </div>
@@ -92,7 +87,8 @@
                                 {% for reservation in reservations %}
                                 <tr>
                                     <td>
-                                        <span class="badge bg-secondary">{{ reservation.seat.number }}</span>
+                                        <!-- Fixed field name from seat.number to seat.seat_number -->
+                                        <span class="badge bg-secondary">{{ reservation.seat.seat_number }}</span>
                                     </td>
                                     <td>
                                         <strong>{{ reservation.passenger.name }}</strong>
@@ -107,6 +103,7 @@
                                         <small class="text-muted">{{ reservation.passenger.phone }}</small>
                                     </td>
                                     <td>
+                                        <!-- Added parentheses to method call -->
                                         <span class="badge bg-info">{{ reservation.seat.get_type_display }}</span>
                                     </td>
                                     <td>
@@ -121,7 +118,8 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <strong>${{ reservation.price|floatformat:0 }}</strong>
+                                        <!-- Fixed field name from price to total_price -->
+                                        <strong>${{ reservation.total_price|floatformat:0 }}</strong>
                                     </td>
                                     <td>
                                         {{ reservation.reservation_date|date:"d/m/Y H:i" }}

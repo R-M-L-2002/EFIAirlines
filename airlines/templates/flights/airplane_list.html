@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Fleet Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-plane"></i> Fleet Management</h2>
+            <p class="text-muted">Manage all airplanes in the fleet</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'flights:create_airplane' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add New Airplane
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card card-hover">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-plane-departure text-primary"></i> Total Airplanes</h5>
+                    <h2 class="mb-0">{{ total_airplanes }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card card-hover">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-check-circle text-success"></i> Active Airplanes</h5>
+                    <h2 class="mb-0">{{ active_airplanes }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Airplanes List -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list"></i> All Airplanes</h5>
+        </div>
+        <div class="card-body">
+            {% if airplanes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Capacity</th>
+                            <th>Layout</th>
+                            <th>Total Seats</th>
+                            <th>Flights</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for airplane in airplanes %}
+                        <tr>
+                            <td>
+                                <strong>{{ airplane.model }}</strong>
+                            </td>
+                            <td>{{ airplane.capacity }} passengers</td>
+                            <td>{{ airplane.rows }} rows × {{ airplane.columns }} columns</td>
+                            <td>
+                                <span class="badge bg-info">{{ airplane.total_seats }} seats</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ airplane.total_flights }} total</span>
+                                {% if airplane.active_flights > 0 %}
+                                <span class="badge bg-success">{{ airplane.active_flights }} active</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if airplane.active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'flights:airplane_detail' airplane.id %}" class="btn btn-sm btn-info" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'flights:edit_airplane' airplane.id %}" class="btn btn-sm btn-warning" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'flights:toggle_airplane_active' airplane.id %}" class="btn btn-sm btn-secondary" title="Toggle Active">
+                                        <i class="fas fa-power-off"></i>
+                                    </a>
+                                    <a href="{% url 'flights:delete_airplane' airplane.id %}" class="btn btn-sm btn-danger" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No airplanes registered yet. 
+                <a href="{% url 'flights:create_airplane' %}">Add your first airplane</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

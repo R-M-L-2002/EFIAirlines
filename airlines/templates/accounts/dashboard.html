@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Virtual Airline{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold">
+                <i class="fas fa-tachometer-alt"></i> Welcome, {{ passenger.name }}!
+            </h1>
+            <p class="lead text-muted">Manage your flights and reservations</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body text-center p-4">
+                    <i class="fas fa-ticket-alt fa-3x text-primary mb-3"></i>
+                    <h3 class="fw-bold">{{ total_reservations }}</h3>
+                    <p class="text-muted mb-0">Total Reservations</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body text-center p-4">
+                    <i class="fas fa-plane-departure fa-3x text-success mb-3"></i>
+                    <h3 class="fw-bold">{{ active_reservations }}</h3>
+                    <p class="text-muted mb-0">Active Reservations</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body text-center p-4">
+                    <i class="fas fa-check-circle fa-3x text-info mb-3"></i>
+                    <h3 class="fw-bold">{{ completed_reservations }}</h3>
+                    <p class="text-muted mb-0">Completed Flights</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mb-4">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-plane-departure"></i> Upcoming Flights</h5>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_reservations %}
+                        {% for reservation in upcoming_reservations %}
+                            <div class="card mb-3 border">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8">
+                                            <h5 class="fw-bold mb-2">
+                                                {{ reservation.flight.origin }} → {{ reservation.flight.destination }}
+                                            </h5>
+                                            <p class="mb-1 text-muted">
+                                                <i class="fas fa-calendar"></i> {{ reservation.flight.departure_date|date:"l, F d, Y" }}
+                                            </p>
+                                            <p class="mb-1 text-muted">
+                                                <i class="fas fa-clock"></i> {{ reservation.flight.departure_date|date:"H:i" }}
+                                            </p>
+                                            <p class="mb-0 text-muted">
+                                                <i class="fas fa-chair"></i> Seat: {{ reservation.seat.seat_number }} ({{ reservation.seat.get_type_display }})
+                                            </p>
+                                        </div>
+                                        <div class="col-md-4 text-end">
+                                            <span class="badge bg-success mb-2">{{ reservation.get_status_display }}</span>
+                                            <br>
+                                            <a href="{% url 'reservations:detail' reservation.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> View Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-plane-slash fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No upcoming flights</p>
+                            <a href="{% url 'flights:list' %}" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Search Flights
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0 rounded-4 mb-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-user"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'flights:list' %}" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Search Flights
+                        </a>
+                        <a href="{% url 'reservations:my_reservations' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-list"></i> My Reservations
+                        </a>
+                        <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-user-edit"></i> Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Recent History</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_history %}
+                        <div class="list-group list-group-flush">
+                            {% for reservation in recent_history %}
+                                <div class="list-group-item px-0">
+                                    <small class="text-muted d-block">{{ reservation.flight.departure_date|date:"M d, Y" }}</small>
+                                    <strong>{{ reservation.flight.origin }} → {{ reservation.flight.destination }}</strong>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">No flight history</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

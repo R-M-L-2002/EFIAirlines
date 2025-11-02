@@ -66,6 +66,5 @@ class PassengerAdmin(admin.ModelAdmin):
     display_age.short_description = 'Age'
 
     def total_bookings(self, obj):
-        # placeholder si tenes relacion con reservas
-        return obj.reservas.count() if hasattr(obj, 'reservas') else 0
+        return obj.reservations.count() if hasattr(obj, 'reservations') else 0
     total_bookings.short_description = 'Total Bookings'

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Flight - {{ flight.flight_number }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Delete Flight
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <strong>Warning!</strong> This action cannot be undone.
+                    </div>
+
+                    <p class="mb-4">Are you sure you want to delete the following flight?</p>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-plane"></i> {{ flight.flight_number }}
+                            </h5>
+                            <p class="card-text">
+                                <strong><i class="fas fa-map-marker-alt text-success"></i> Origin:</strong> {{ flight.origin }}<br>
+                                <strong><i class="fas fa-map-marker-alt text-danger"></i> Destination:</strong> {{ flight.destination }}<br>
+                                <strong><i class="fas fa-calendar"></i> Departure:</strong> {{ flight.departure_date|date:"M d, Y H:i" }}<br>
+                                <strong><i class="fas fa-calendar"></i> Arrival:</strong> {{ flight.arrival_date|date:"M d, Y H:i" }}<br>
+                                <strong><i class="fas fa-plane-departure"></i> Airplane:</strong> {{ flight.airplane.model }}<br>
+                                <strong><i class="fas fa-dollar-sign"></i> Base Price:</strong> ${{ flight.base_price }}<br>
+                                <strong><i class="fas fa-info-circle"></i> Status:</strong> 
+                                <span class="badge bg-{% if flight.status == 'scheduled' %}success{% elif flight.status == 'boarding' %}warning{% else %}secondary{% endif %}">
+                                    {{ flight.get_status_display }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> Deleting this flight will also delete all associated reservations and tickets.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'flights:detail' flight.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Delete Flight
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -5,21 +5,27 @@ Este archivo contiene:
 - Vista home
 - Vistas de autenticacion (login, registro, logout)
 - Vistas de perfil de usuario
+- Vistas de gestion de usuarios para admins
 """
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, authenticate, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth.models import User
-from django.db import transaction
-from django.urls import reverse
 from django.http import JsonResponse
-from django.utils import timezone
 
-from .forms import UserRegisterForm, LoginForm, UserProfileForm, PassengerForm
-from apps.flights.models import Flight
-from apps.passengers.models import Passenger
-from apps.reservations.models import Reservation
+from services.account import AccountService
+from services.passenger import PassengerService
+from services.flight import FlightService
+from services.reservation import ReservationService
+
+from .forms import UserRegisterForm, LoginForm, UserProfileForm, PassengerForm, UserManagementForm
+
+
+account_service = AccountService()
+passenger_service = PassengerService()
+flight_service = FlightService()
+reservation_service = ReservationService()
 
 
 def home(request):
@@ -27,25 +33,23 @@ def home(request):
     Vista principal del sitio.
     Muestra informacion general y vuelos destacados.
     """
-    # Obtener vuelos proximos (proximos 5)
-    upcoming_flights = Flight.objects.filter(
-        status='programmed'
-    ).order_by('departure_date')[:5]
-    
-    # Estadisticas generales
-    total_flights = Flight.objects.count()
-    total_passengers = Passenger.objects.filter(active=True).count()
-    total_reservations = Reservation.objects.filter(
-        status__in=['confirmed', 'paid']
-    ).count()
-    
+    upcoming_flights = flight_service.get_upcoming_flights(limit=5)
+
+    from repositories.flight import FlightRepository
+    from repositories.passenger import PassengerRepository
+    from repositories.reservation import ReservationRepository
+
+    total_flights = FlightRepository.get_all().count()
+    total_passengers = PassengerRepository.get_all_active().count()
+    total_reservations = ReservationRepository.count_by_status(['confirmed', 'paid'])
+
     context = {
         'upcoming_flights': upcoming_flights,
         'total_flights': total_flights,
         'total_passengers': total_passengers,
         'total_reservations': total_reservations,
     }
-    
+
     return render(request, 'accounts/home.html', context)
 
 
@@ -60,26 +64,30 @@ def user_registration(request):
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
         if form.is_valid():
-            try:
-                with transaction.atomic():
-                    # Crear usuario
-                    user = form.save()
-                    
-                    # Autenticar y loguear
-                    username = form.cleaned_data.get('username')
-                    password = form.cleaned_data.get('password')
-                    user = authenticate(username=username, password=password)
-                    
-                    if user:
-                        login(request, user)
-                        messages.success(
-                            request, 
-                            f'Welcome {user.first_name}! Your account has been created successfully.'
-                        )
-                        return redirect('accounts:home')
-                    
-            except Exception:
-                messages.error(request, 'Error creating account. Please try again.')
+            result = account_service.register_user(
+                username=form.cleaned_data.get('username'),
+                email=form.cleaned_data.get('email'),
+                password=form.cleaned_data.get('password1'),
+                first_name=form.cleaned_data.get('first_name', ''),
+                last_name=form.cleaned_data.get('last_name', '')
+            )
+            
+            if result['success']:
+                # Autenticar usuario
+                user = account_service.authenticate_user(
+                    username=form.cleaned_data.get('username'),
+                    password=form.cleaned_data.get('password1')
+                )
+                
+                if user:
+                    login(request, user)
+                    messages.success(
+                        request, 
+                        f'Welcome {user.first_name}! Your account has been created successfully.'
+                    )
+                    return redirect('accounts:home')
+            else:
+                messages.error(request, result['message'])
         else:
             messages.error(request, 'Please correct the errors in the form.')
     else:
@@ -100,13 +108,13 @@ def user_login(request):
         if form.is_valid():
             username = form.cleaned_data.get('username')
             password = form.cleaned_data.get('password')
-            user = authenticate(username=username, password=password)
+            
+            user = account_service.authenticate_user(username, password)
             
             if user is not None:
                 login(request, user)
                 messages.success(request, f'Welcome back, {user.first_name}!')
                 
-                # Redirigir a la siguiente pagina o al home
                 next_page = request.GET.get('next', 'accounts:home')
                 return redirect(next_page)
             else:
@@ -136,20 +144,11 @@ def user_profile(request):
     """
     Vista para mostrar y editar el perfil de usuario.
     """
-    # Obtener o crear perfil de pasajero
-    try:
-        passenger = Passenger.objects.get(email=request.user.email)
-    except Passenger.DoesNotExist:
-        passenger = None
-    
-    # Obtener reservas del usuario
-    reservations = []
-    if passenger:
-        reservations = passenger.reservations.all().order_by('-reservation_date')[:5]
+    profile_data = account_service.get_user_profile_data(request.user)
     
     context = {
-        'passenger': passenger,
-        'reservations': reservations,
+        'passenger': profile_data['passenger'],
+        'reservations': profile_data['reservations'],
     }
     
     return render(request, 'accounts/profile.html', context)
@@ -163,9 +162,18 @@ def edit_profile(request):
     if request.method == 'POST':
         form = UserProfileForm(request.POST, instance=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Profile updated successfully.')
-            return redirect('accounts:profile')
+            result = account_service.update_user_profile(
+                request.user,
+                first_name=form.cleaned_data.get('first_name'),
+                last_name=form.cleaned_data.get('last_name'),
+                email=form.cleaned_data.get('email')
+            )
+            
+            if result['success']:
+                messages.success(request, result['message'])
+                return redirect('accounts:profile')
+            else:
+                messages.error(request, result['message'])
         else:
             messages.error(request, 'Please correct the errors in the form.')
     else:
@@ -179,26 +187,25 @@ def complete_profile(request):
     """
     Completar el perfil de pasajero despues del registro.
     """
-    # Verificar si ya existe el perfil de pasajero para este user
-    try:
-        passenger = Passenger.objects.get(user=request.user)
+    existing_passenger = passenger_service.get_passenger_by_user(request.user.id)
+    
+    if existing_passenger:
         messages.info(request, 'You already have a complete passenger profile.')
         return redirect('accounts:profile')
-    except Passenger.DoesNotExist:
-        passenger = Passenger(user=request.user)  # <--- clave
 
     if request.method == 'POST':
-        form = PassengerForm(request.POST, instance=passenger)
+        form = PassengerForm(request.POST)
         if form.is_valid():
-            passenger = form.save(commit=False)
-            passenger.user = request.user  # asignar el usuario
-            passenger.email = request.user.email  # opcional, si quieres forzar email
-            passenger.save()
-            messages.success(
-                request,
-                'Passenger profile completed! You can now make reservations.'
+            result = passenger_service.create_passenger(
+                form.cleaned_data,
+                user=request.user
             )
-            return redirect('accounts:profile')
+            
+            if result['success']:
+                messages.success(request, result['message'])
+                return redirect('accounts:profile')
+            else:
+                messages.error(request, result['message'])
         else:
             messages.error(request, 'Please correct the errors in the form.')
     else:
@@ -206,7 +213,7 @@ def complete_profile(request):
             'name': f"{request.user.first_name} {request.user.last_name}".strip(),
             'email': request.user.email,
         }
-        form = PassengerForm(instance=passenger, initial=initial_data)
+        form = PassengerForm(initial=initial_data)
 
     return render(request, 'accounts/complete_profile.html', {'form': form})
 
@@ -216,36 +223,19 @@ def user_dashboard(request):
     """
     Panel personalizado para usuarios logueados.
     """
-    try:
-        passenger = Passenger.objects.get(email=request.user.email)
-    except Passenger.DoesNotExist:
+    dashboard_data = account_service.get_user_dashboard_data(request.user)
+    
+    if not dashboard_data['has_passenger_profile']:
         messages.warning(request, 'Complete your passenger profile to access all features.')
         return redirect('accounts:complete_profile')
     
-    total_reservations = passenger.reservations.count()
-    active_reservations = passenger.reservations.filter(
-        status__in=['confirmed', 'paid']
-    ).count()
-    completed_reservations = passenger.reservations.filter(
-        status='completed'
-    ).count()
-    
-    upcoming_reservations = passenger.reservations.filter(
-        status__in=['confirmed', 'paid'],
-        flight__departure_date__gte=timezone.now()
-    ).order_by('flight__departure_date')[:3]
-    
-    recent_history = passenger.reservations.filter(
-        status='completed'
-    ).order_by('-reservation_date')[:5]
-    
     context = {
-        'passenger': passenger,
-        'total_reservations': total_reservations,
-        'active_reservations': active_reservations,
-        'completed_reservations': completed_reservations,
-        'upcoming_reservations': upcoming_reservations,
-        'recent_history': recent_history,
+        'passenger': dashboard_data.get('passenger'),
+        'total_reservations': dashboard_data.get('total_reservations', 0),
+        'active_reservations': dashboard_data.get('active_reservations', 0),
+        'completed_reservations': dashboard_data.get('completed_reservations', 0),
+        'upcoming_reservations': dashboard_data.get('upcoming_reservations', []),
+        'recent_history': dashboard_data.get('recent_history', []),
     }
     
     return render(request, 'accounts/dashboard.html', context)
@@ -258,7 +248,126 @@ def check_username_availability(request):
     if request.method == 'GET':
         username = request.GET.get('username', '')
         if username:
-            available = not User.objects.filter(username=username).exists()
+            available = account_service.check_username_availability(username)
             return JsonResponse({'available': available})
     
     return JsonResponse({'available': False})
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def manage_users(request):
+    """
+    Vista para listar todos los usuarios del sistema.
+    Solo accesible para superusuarios.
+    """
+    search = request.GET.get('search', '')
+    users = account_service.search_users(search)
+    
+    context = {
+        'users': users,
+        'search': search,
+    }
+    
+    return render(request, 'accounts/manage_users.html', context)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def create_user(request):
+    """
+    Vista para crear un nuevo usuario.
+    Solo accesible para superusuarios.
+    """
+    if request.method == 'POST':
+        form = UserManagementForm(request.POST)
+        if form.is_valid():
+            result = account_service.create_user_admin(
+                username=form.cleaned_data.get('username'),
+                email=form.cleaned_data.get('email'),
+                password=form.cleaned_data.get('password1'),
+                first_name=form.cleaned_data.get('first_name', ''),
+                last_name=form.cleaned_data.get('last_name', ''),
+                is_staff=form.cleaned_data.get('is_staff', False),
+                is_superuser=form.cleaned_data.get('is_superuser', False)
+            )
+            
+            if result['success']:
+                messages.success(request, result['message'])
+                return redirect('accounts:manage_users')
+            else:
+                messages.error(request, result['message'])
+        else:
+            messages.error(request, 'Please correct the errors in the form.')
+    else:
+        form = UserManagementForm()
+    
+    return render(request, 'accounts/create_user.html', {'form': form})
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def edit_user(request, user_id):
+    """
+    Vista para editar un usuario existente.
+    Solo accesible para superusuarios.
+    """
+    user = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        form = UserManagementForm(request.POST, instance=user)
+        if form.is_valid():
+            result = account_service.update_user_admin(
+                user_id=user_id,
+                first_name=form.cleaned_data.get('first_name'),
+                last_name=form.cleaned_data.get('last_name'),
+                email=form.cleaned_data.get('email'),
+                is_staff=form.cleaned_data.get('is_staff', False),
+                is_superuser=form.cleaned_data.get('is_superuser', False)
+            )
+            
+            if result['success']:
+                messages.success(request, result['message'])
+                return redirect('accounts:manage_users')
+            else:
+                messages.error(request, result['message'])
+        else:
+            messages.error(request, 'Please correct the errors in the form.')
+    else:
+        form = UserManagementForm(instance=user)
+    
+    context = {
+        'form': form,
+        'user_obj': user,
+    }
+    
+    return render(request, 'accounts/edit_user.html', context)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def delete_user(request, user_id):
+    """
+    Vista para eliminar un usuario.
+    Solo accesible para superusuarios.
+    """
+    user = get_object_or_404(User, id=user_id)
+    
+    if user == request.user:
+        messages.error(request, 'You cannot delete your own account.')
+        return redirect('accounts:manage_users')
+    
+    if request.method == 'POST':
+        result = account_service.delete_user_admin(user_id, request.user)
+        
+        if result['success']:
+            messages.success(request, result['message'])
+            return redirect('accounts:manage_users')
+        else:
+            messages.error(request, result['message'])
+    
+    context = {
+        'user_obj': user,
+    }
+    
+    return render(request, 'accounts/delete_user.html', context)

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment - Airline: The Primos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h3 class="mb-0">
+                    <i class="fas fa-credit-card"></i> Payment
+                </h3>
+                <p class="mb-0">Reservation Code: <strong>{{ reservation.reservation_code }}</strong></p>
+            </div>
+            <div class="card-body">
+                <!-- Reservation Summary -->
+                <div class="alert alert-info">
+                    <h5 class="alert-heading"><i class="fas fa-info-circle"></i> Reservation Summary</h5>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Flight:</strong> {{ reservation.flight.flight_number }}</p>
+                            <p class="mb-1"><strong>Route:</strong> {{ reservation.flight.origin }} → {{ reservation.flight.destination }}</p>
+                            <p class="mb-1"><strong>Date:</strong> {{ reservation.flight.departure_date|date:"F d, Y" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Passenger:</strong> {{ reservation.passenger.name }}</p>
+                            <p class="mb-1"><strong>Seat:</strong> {{ reservation.seat.seat_number }} ({{ reservation.seat.get_type_display }})</p>
+                            <p class="mb-0"><strong>Total:</strong> <span class="text-success fs-4">${{ reservation.total_price }}</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Form -->
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <h5><i class="fas fa-wallet"></i> Select Payment Method</h5>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="payment_method" id="credit_card" value="credit_card" checked>
+                            <label class="form-check-label" for="credit_card">
+                                <i class="fas fa-credit-card text-primary"></i> Credit Card
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="payment_method" id="debit_card" value="debit_card">
+                            <label class="form-check-label" for="debit_card">
+                                <i class="fas fa-credit-card text-success"></i> Debit Card
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="payment_method" id="paypal" value="paypal">
+                            <label class="form-check-label" for="paypal">
+                                <i class="fab fa-paypal text-info"></i> PayPal
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="payment_method" id="bank_transfer" value="bank_transfer">
+                            <label class="form-check-label" for="bank_transfer">
+                                <i class="fas fa-university text-warning"></i> Bank Transfer
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'reservations:detail' reservation.reservation_code %}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-check-circle"></i> Complete Payment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

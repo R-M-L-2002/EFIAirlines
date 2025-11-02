@@ -52,7 +52,12 @@
                                 <div class="row">
                                     <div class="col-md-8">
                                         <p class="mb-1">Base flight price: ${{ reservation.flight.base_price|floatformat:0 }}</p>
-                                        <p class="mb-1">{{ reservation.seat.get_type_display }} multiplier: {{ reservation.seat.extra_price }}x</p>
+                                        <!-- Fixed display logic to show seat extra price correctly -->
+                                        {% if reservation.seat.extra_price > 0 %}
+                                            <p class="mb-1">{{ reservation.seat.get_type_display }} extra: +${{ reservation.seat.extra_price|floatformat:0 }}</p>
+                                        {% else %}
+                                            <p class="mb-1">{{ reservation.seat.get_type_display }}: No extra charge</p>
+                                        {% endif %}
                                         {% if reservation.notes %}
                                             <p class="mb-1"><small class="text-muted">{{ reservation.notes }}</small></p>
                                         {% endif %}

@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}New Reservation - {{ flight.flight_number }} - Virtual Airline{% endblock %}
+{% block title %}New Reservation - {{ flight.flight_number }} - Airline: The Primos{% endblock %}
 
 {% block extra_css %}
 <style>
     .seat {
-    width: 40px;
-    height: 40px;
-    margin: 3px;
+    width: 50px;
+    height: 50px;
+    margin: 4px;
     border: 2px solid #ddd;
-    border-radius: 8px;
+    border-radius: 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -19,34 +19,59 @@
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
+    background-size: 30px 30px;
+    background-position: center;
+    background-repeat: no-repeat;
 }
+
 .seat.available {
     background-color: #d4edda;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23155724'%3E%3Cpath d='M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z'/%3E%3C/svg%3E");
     border-color: #28a745;
     color: #155724;
 }
 .seat.available:hover {
     background-color: #c3e6cb;
     transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
 }
+
 .seat.occupied {
     background-color: #f8d7da;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23721c24'%3E%3Cpath d='M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z'/%3E%3C/svg%3E");
     border-color: #dc3545;
     color: #721c24;
     cursor: not-allowed;
+    opacity: 0.7;
 }
+
 .seat.selected {
-    background-color: #007bff;
-    border-color: #0056b3;
+    background-color: #623ACF;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z'/%3E%3C/svg%3E");
+    border-color: #4a2a9f;
     color: white;
-    transform: scale(1.1);
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(98, 58, 207, 0.4);
 }
+
+/* Adding visual distinction for seat classes */
 .seat.first {
     border-width: 3px;
+    border-color: #FFD700;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
 }
+
 .seat.business {
-    border-style: dashed;
+    border-width: 2px;
+    border-color: #17a2b8;
+    box-shadow: 0 0 6px rgba(23, 162, 184, 0.2);
 }
+
+.seat.economy {
+    border-width: 2px;
+}
+/* </CHANGE> */
+
 .row-seat {
     margin-bottom: 15px;
     display: flex;
@@ -58,52 +83,31 @@
     text-align: center;
     font-weight: bold;
     margin-right: 15px;
+    font-size: 16px;
+    color: #333;
 }
 .aisle {
-    width: 30px;
-}
-.seat-info {
-    position: fixed;
-    top: 50%;
-    right: 20px;
-    transform: translateY(-50%);
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    min-width: 250px;
-    z-index: 1000;
+    width: 40px;
 }
 .seat-map {
-    background: #f8f9fa;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border-radius: 15px;
     padding: 30px;
     margin: 20px 0;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
 }
 
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'accounts:home' %}">Home</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'flights:list' %}">Flights</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'flights:detail' flight.id %}">{{ flight.flight_number }}</a></li>
-                <li class="breadcrumb-item active">New Reservation</li>
-            </ol>
-        </nav>
-    </div>
-</div>
+<div class="container-fluid px-4 py-3">
 
 <!-- Flight Information -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
+        <div class="card shadow-sm">
+            <div class="card-header text-white" style="background-color: #623ACF;">
                 <h3 class="mb-0">
                     <i class="fas fa-ticket-alt"></i> New Reservation - {{ flight.flight_number }}
                 </h3>
@@ -118,7 +122,7 @@
                                 <small>{{ flight.departure_date|date:"m/d/Y H:i" }}</small>
                             </div>
                             <div class="text-center">
-                                <i class="fas fa-plane fa-2x text-primary"></i>
+                                <i class="fas fa-plane fa-2x" style="color: #623ACF;"></i>
                             </div>
                             <div class="text-center">
                                 <h5 class="text-danger">{{ flight.destination }}</h5>
@@ -143,7 +147,7 @@
 <!-- Seat Selection -->
 <div class="row">
     <div class="col-lg-8">
-        <div class="card">
+        <div class="card shadow-sm">
             <div class="card-header">
                 <h4 class="mb-0">
                     <i class="fas fa-th"></i> Select Your Seat
@@ -156,23 +160,43 @@
                     <h6>Legend:</h6>
                     <div class="d-flex flex-wrap gap-3">
                         <div class="d-flex align-items-center">
-                            <div class="seat available me-2">1A</div>
+                            <div class="seat available economy me-2" style="pointer-events: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#155724" width="30" height="30">
+                                    <path d="M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>
+                                </svg>
+                            </div>
                             <span>Available</span>
                         </div>
                         <div class="d-flex align-items-center">
-                            <div class="seat occupied me-2">1B</div>
+                            <div class="seat occupied economy me-2" style="pointer-events: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#721c24" width="30" height="30">
+                                    <path d="M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>
+                                </svg>
+                            </div>
                             <span>Occupied</span>
                         </div>
                         <div class="d-flex align-items-center">
-                            <div class="seat selected me-2">1C</div>
+                            <div class="seat selected economy me-2" style="pointer-events: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="30" height="30">
+                                    <path d="M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>
+                                </svg>
+                            </div>
                             <span>Selected</span>
                         </div>
                         <div class="d-flex align-items-center">
-                            <div class="seat available first me-2">1D</div>
+                            <div class="seat available first me-2" style="pointer-events: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#155724" width="30" height="30">
+                                    <path d="M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>
+                                </svg>
+                            </div>
                             <span>First Class ($$$)</span>
                         </div>
                         <div class="d-flex align-items-center">
-                            <div class="seat available business me-2">5A</div>
+                            <div class="seat available business me-2" style="pointer-events: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#155724" width="30" height="30">
+                                    <path d="M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>
+                                </svg>
+                            </div>
                             <span>Business ($$)</span>
                         </div>
                     </div>
@@ -195,25 +219,42 @@
                                 {% if forloop.counter == 3 %}
                                     <div class="aisle"></div>
                                 {% endif %}
-                                    <div class="seat {% if seat_info.available %}available{% else %}occupied{% endif %} {{ seat_info.seat.get_type_display|lower }}"
+                                <!-- Fixed seat rendering to show all seats with proper classes -->
+                                {% if seat_info.is_occupied %}
+                                    <div class="seat occupied {{ seat_info.seat_class }}"
                                         data-seat-id="{{ seat_info.seat.id }}"
                                         data-price="{{ seat_info.price }}"
-                                        data-type="{{ seat_info.seat.get_type_display|lower }}"
-                                        data-number="{{ seat_info.seat.number }}">
-                                        {{ seat_info.seat.number }}
+                                        data-type="{{ seat_info.seat_class }}"
+                                        data-number="{{ seat_info.seat.seat_number }}"
+                                        title="Occupied - Not Available">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#721c24" width="30" height="30">
+                                            <path d="M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>
+                                        </svg>
                                     </div>
+                                {% else %}
+                                    <div class="seat available {{ seat_info.seat_class }}"
+                                        data-seat-id="{{ seat_info.seat.id }}"
+                                        data-price="{{ seat_info.price }}"
+                                        data-type="{{ seat_info.seat_class }}"
+                                        data-number="{{ seat_info.seat.seat_number }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#155724" width="30" height="30">
+                                            <path d="M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>
+                                        </svg>
+                                    </div>
+                                {% endif %}
+                                <!-- </CHANGE> -->
                             {% endfor %}
                         </div>
                         {% endfor %}
                         
                         <div class="mt-4">
                             <div class="mb-3">
-                                <label for="remarks" class="form-label">Remarks (optional)</label>
-                                <textarea name="remarks" id="remarks" class="form-control" rows="2" 
+                                <label for="notes" class="form-label">Remarks (optional)</label>
+                                <textarea name="notes" id="notes" class="form-control" rows="2" 
                                           placeholder="Special requests, medical needs, etc."></textarea>
                             </div>
                             
-                            <button type="submit" class="btn btn-success btn-lg" id="btnReserve" disabled>
+                            <button type="submit" class="btn btn-lg text-white" style="background-color: #623ACF;" id="btnReserve" disabled>
                                 <i class="fas fa-check"></i> Create Reservation
                             </button>
                             <a href="{% url 'flights:detail' flight.id %}" class="btn btn-outline-secondary btn-lg">
@@ -228,22 +269,25 @@
     
     <!-- Seat Information Panel -->
     <div class="col-lg-4">
-        <div class="card sticky-top" style="top: 20px;">
-            <div class="card-header bg-info text-white">
+        <div class="card sticky-top shadow-sm" style="top: 20px;">
+            <div class="card-header text-white" style="background-color: #17a2b8;">
                 <h5 class="mb-0">
                     <i class="fas fa-info-circle"></i> Seat Information
                 </h5>
             </div>
             <div class="card-body" id="seatInfo">
                 <div class="text-center text-muted">
-                    <i class="fas fa-hand-pointer fa-3x mb-3"></i>
-                    <p>Select a seat to view details</p>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#6c757d" width="80" height="80">
+                        <path d="M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>
+                    </svg>
+                    <p class="mt-3">Select a seat to view details</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+</div>
 
 {% endblock %}
 
@@ -251,23 +295,32 @@
 <script>
 let selectedSeatElement = null;
 
-// Funciones: checkAvailability, selectSeat, updateSeatInfo, getClassInfo
-function checkAvailability(seatDiv) {
-    return !seatDiv.classList.contains('occupied');
-}
-
 function selectSeat(element) {
-    if (!checkAvailability(element)) {
+    // Check if seat is occupied
+    if (element.classList.contains('occupied')) {
         alert("This seat is not available.");
         return;
     }
 
-    if (selectedSeatElement) selectedSeatElement.classList.remove('selected');
+    // Deselect previous seat
+    if (selectedSeatElement) {
+        selectedSeatElement.classList.remove('selected');
+        const prevSvg = selectedSeatElement.querySelector('svg');
+        if (prevSvg) prevSvg.setAttribute('fill', '#155724');
+    }
+    
+    // Select new seat
     element.classList.add('selected');
+    const svg = element.querySelector('svg');
+    if (svg) svg.setAttribute('fill', 'white');
+    
     selectedSeatElement = element;
 
+    // Update form and button
     document.getElementById('selectedSeat').value = element.dataset.seatId;
     document.getElementById('btnReserve').disabled = false;
+    
+    // Update info panel
     updateSeatInfo(element);
 }
 
@@ -275,40 +328,56 @@ function updateSeatInfo(element) {
     const infoPanel = document.getElementById('seatInfo');
     const price = parseFloat(element.dataset.price) || 0;
     const seatClass = element.dataset.type || 'economy';
+    
+    const classNames = {
+        'first': 'First Class',
+        'business': 'Business Class',
+        'economy': 'Economy Class'
+    };
+    
+    const classInfo = {
+        'first': 'Includes: Gourmet meal, premium drinks, reclining seat, extra baggage.',
+        'business': 'Includes: Enhanced meal, drinks, comfortable seat, additional baggage.',
+        'economy': 'Includes: Snack, drink, standard carry-on baggage.'
+    };
 
     infoPanel.innerHTML = `
         <div class="text-center">
-            <div class="seat mb-3" style="font-size:16px;width:60px;height:60px;">${element.dataset.number}</div>
+            <div class="mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#623ACF" width="80" height="80">
+                    <path d="M4 18v3h3v-3h10v3h3v-6H4v3zm15-8h3v3h-3v-3zM2 10h3v3H2v-3zm15 3H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>
+                </svg>
+            </div>
             <h5>Seat ${element.dataset.number}</h5>
-            <p class="mb-2"><strong>Class:</strong> ${seatClass}</p>
+            <p class="mb-2"><strong>Class:</strong> ${classNames[seatClass] || 'Standard'}</p>
             <h4 class="text-success mb-3">$${price.toFixed(2)}</h4>
             <div class="alert alert-info">
-                <small><i class="fas fa-info-circle"></i> ${getClassInfo(seatClass)}</small>
+                <small><i class="fas fa-info-circle"></i> ${classInfo[seatClass] || 'Standard class.'}</small>
             </div>
         </div>
     `;
 }
 
-function getClassInfo(className) {
-    switch(className.toLowerCase()) {
-        case 'first': return 'Includes: Gourmet meal, premium drinks, reclining seat, extra baggage.';
-        case 'business': return 'Includes: Enhanced meal, drinks, comfortable seat, additional baggage.';
-        case 'economy': return 'Includes: Snack, drink, standard carry-on baggage.';
-        default: return 'Standard class.';
-    }
-}
-
-// Inicializa los eventos
+// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    const seats = document.querySelectorAll('.seat.available');
-    console.log("Seats available:", seats.length);
-    seats.forEach(seat => {
-        seat.addEventListener('click', function() { selectSeat(this); });
+    const availableSeats = document.querySelectorAll('.seat.available');
+    
+    availableSeats.forEach(seat => {
+        // Add click handler
+        seat.addEventListener('click', function() {
+            selectSeat(this);
+        });
+        
+        // Add tooltip
         const price = parseFloat(seat.dataset.price) || 0;
-        seat.title = `Seat ${seat.dataset.number} - ${seat.dataset.type || 'Economy'} - $${price.toFixed(2)}`;
+        const seatClass = seat.dataset.type || 'economy';
+        const classNames = {
+            'first': 'First Class',
+            'business': 'Business Class',
+            'economy': 'Economy Class'
+        };
+        seat.title = `Seat ${seat.dataset.number} - ${classNames[seatClass]} - $${price.toFixed(2)}`;
     });
 });
 </script>
 {% endblock %}
-
-

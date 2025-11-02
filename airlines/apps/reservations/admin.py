@@ -53,8 +53,7 @@ class ReservationAdmin(admin.ModelAdmin):
     ]
     search_fields = [
         'reservation_code',
-        'passenger__first_name',
-        'passenger__last_name',
+        'passenger__name',
         'passenger__document',
         'flight__flight_number'
     ]
@@ -175,8 +174,7 @@ class TicketAdmin(admin.ModelAdmin):
     search_fields = [
         'barcode',
         'reservation__reservation_code',
-        'reservation__passenger__first_name',
-        'reservation__passenger__last_name',
+        'reservation__passenger__name',
         'reservation__passenger__document'
     ]
     readonly_fields = [
@@ -211,7 +209,7 @@ class TicketAdmin(admin.ModelAdmin):
     
     def passenger_info(self, obj):
         # muestra info del pasajero
-        return obj.reservation.passenger.first_name
+        return obj.reservation.passenger.name
     passenger_info.short_description = 'Passenger'
     
     def is_valid_display(self, obj):

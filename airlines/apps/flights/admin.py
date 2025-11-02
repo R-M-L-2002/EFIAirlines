@@ -9,6 +9,7 @@ Acá configuramos las interfaces del admin para:
 from django.contrib import admin
 from django.utils.html import format_html
 from apps.flights.models import Airplane, Flight, Seat
+from django.urls import reverse
 
 
 class SeatInline(admin.TabularInline):
@@ -70,6 +71,7 @@ class FlightAdmin(admin.ModelAdmin):
         'status',
         'base_price',
         'is_active',
+        'passenger_report_link',
     ]
     list_filter = [
         'status',
@@ -116,6 +118,11 @@ class FlightAdmin(admin.ModelAdmin):
             return f"{hours}h {minutes}m"
         return "-"
     formatted_duration.short_description = 'Duration'
+
+    def passenger_report_link(self, obj):
+        url = reverse('reports:flight_passengers_report', args=[obj.id])
+        return format_html(f'<a class="button" href="{url}" target="_blank">Passenger Report</a>')
+    passenger_report_link.short_description = 'Reports'
 
 @admin.register(Seat)
 class SeatAdmin(admin.ModelAdmin):

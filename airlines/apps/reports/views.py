@@ -13,11 +13,14 @@ import json
 Vistas para reportes del sistema de aerolinea
 """
 
-
 from apps.flights.models import Flight, Airplane, Seat
 from apps.passengers.models import Passenger
 from apps.reservations.models import Reservation, Ticket
 from django.contrib.auth.models import User
+
+from services.report import ReportService
+
+report_service = ReportService()
 
 
 def is_staff(user):
@@ -30,65 +33,20 @@ def is_staff(user):
 def reports_dashboard(request):
     """Dashboard principal de reportes con stats generales"""
     
-    # stats generales, cuantos vuelos, pasajeros, reservas y usuarios tenemos
-    total_flights = Flight.objects.count()
-    total_passengers = Passenger.objects.count()
-    total_reservations = Reservation.objects.count()
-    total_users = User.objects.count()
-    
-    # cuantas reservas hay por estado
-    reservations_by_status = Reservation.objects.values('status').annotate(
-        count=Count('id')
-    ).order_by('status')
-    
-    # vuelos mas populares, los que tienen mas reservas
-    popular_flights = Flight.objects.annotate(
-        total_reservations=Count('reservation')
-    ).order_by('-total_reservations')[:5]
-    
-    # ingresos por mes, ultimos 6 meses
-    six_months_ago = timezone.now() - timedelta(days=180)
-    monthly_income = Reservation.objects.filter(
-        reservation_date__gte=six_months_ago,
-        status__in=['confirmed', 'paid']
-    ).extra(
-        select={'month': "strftime('%%Y-%%m', reservation_date)"}
-    ).values('month').annotate(
-        total=Sum('price')
-    ).order_by('month')
-    
-    # ocupacion promedio de vuelos
-    flight_occupancy = []
-    for flight in Flight.objects.all()[:10]:
-        total_seats = flight.airplane.capacity
-        occupied_seats = Reservation.objects.filter(
-            flight=flight,
-            status__in=['confirmed', 'paid']
-        ).count()
-        percent = (occupied_seats / total_seats * 100) if total_seats > 0 else 0
-        flight_occupancy.append({
-            'flight': flight,
-            'occupancy': round(percent, 1)
-        })
-    
-    # pasajeros que vuelan mas seguido
-    frequent_passengers = Passenger.objects.annotate(
-        total_flights=Count('reservation', filter=Q(reservation__status__in=['confirmed', 'paid']))
-    ).order_by('-total_flights')[:5]
+    stats = report_service.get_dashboard_statistics()
     
     context = {
-        'total_flights': total_flights,
-        'total_passengers': total_passengers,
-        'total_reservations': total_reservations,
-        'total_users': total_users,
-        'reservations_by_status': reservations_by_status,
-        'popular_flights': popular_flights,
-        'monthly_income': list(monthly_income),
-        'flight_occupancy': flight_occupancy,
-        'frequent_passengers': frequent_passengers,
+        'total_flights': stats['total_flights'],
+        'total_passengers': stats['total_passengers'],
+        'total_reservations': stats['total_reservations'],
+        'total_users': stats['total_users'],
+        'reservations_by_status': stats['reservations_by_status'],
+        'popular_flights': stats['popular_flights'],
+        'monthly_income': stats['monthly_income'],
+        'flight_occupancy': stats['flight_occupancy'],
+        'frequent_passengers': stats['frequent_passengers'],
     }
     
-    # renderizamos el dashboard con toda la data armada
     return render(request, 'reports/dashboard.html', context)
 
 
@@ -97,28 +55,13 @@ def reports_dashboard(request):
 def flight_passengers_report(request, flight_id):
     """Reporte detallado de pasajeros de un vuelo especifico"""
     
-    flight = get_object_or_404(Flight, id=flight_id)
+    report_data = report_service.get_flight_passengers_report(flight_id)
     
-    # traemos todas las reservas del vuelo, con pasajero y asiento ya cargados
-    reservations = Reservation.objects.filter(flight=flight).select_related(
-        'passenger', 'seat'
-    ).order_by('seat__number')
+    if not report_data['success']:
+        from django.http import Http404
+        raise Http404(report_data['message'])
     
-    # stats del vuelo
-    total_reservations = reservations.count()
-    confirmed_reservations = reservations.filter(status__in=['confirmed', 'paid']).count()
-    total_income = reservations.filter(status__in=['confirmed', 'paid']).aggregate(
-        total=Sum('price')
-    )['total'] or 0
-    
-    # distribucion por tipo de asiento
-    seat_distribution = reservations.filter(
-        status__in=['confirmed', 'paid']
-    ).values('seat__type').annotate(
-        count=Count('id')
-    )
-    
-    # exportar a csv si piden
+    # Exportar a CSV si se solicita
     if request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="passengers_flight_{flight_id}.csv"'
@@ -129,33 +72,32 @@ def flight_passengers_report(request, flight_id):
             'Seat', 'Seat Type', 'Status', 'Price', 'Reservation Date'
         ])
         
-        for reservation in reservations:
+        for reservation in report_data['reservations']:
             writer.writerow([
                 reservation.reservation_code,
                 reservation.passenger.name,
                 f"{reservation.passenger.document_type}: {reservation.passenger.document}",
                 reservation.passenger.email,
-                reservation.seat.number,
+                reservation.seat.seat_number,
                 reservation.seat.get_type_display(),
                 reservation.get_status_display(),
-                reservation.price,
+                reservation.total_price,
                 reservation.reservation_date.strftime('%d/%m/%Y %H:%M')
             ])
         
         return response
     
     context = {
-        'flight': flight,
-        'reservations': reservations,
-        'total_reservations': total_reservations,
-        'confirmed_reservations': confirmed_reservations,
-        'total_income': total_income,
-        'seat_distribution': seat_distribution,
-        'occupancy_percent': round((confirmed_reservations / flight.airplane.capacity * 100), 1) if flight.airplane.capacity > 0 else 0,
+        'flight': report_data['flight'],
+        'reservations': report_data['reservations'],
+        'total_reservations': report_data['total_reservations'],
+        'confirmed_reservations': report_data['confirmed_reservations'],
+        'total_income': report_data['total_income'],
+        'seat_distribution': report_data['seat_distribution'],
+        'occupancy_percent': report_data['occupancy_percent'],
     }
     
-    # renderizamos la plantilla del reporte
-    return render(request, 'reports/flight_passengers.html', context)
+    return render(request, 'reports/passenger_flight.html', context)
 
 
 @login_required
@@ -163,59 +105,34 @@ def flight_passengers_report(request, flight_id):
 def income_report(request):
     """Reporte detallado de ingresos por periodo"""
     
-    # agarramos parametros de filtro
+    # Obtener parámetros de filtro
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
     
-    # si no pasan nada, por defecto ultimo mes
-    if not start_date:
-        start_date = (timezone.now() - timedelta(days=30)).date()
-    else:
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+    # Convertir fechas si existen
+    start_date_obj = None
+    end_date_obj = None
     
-    if not end_date:
-        end_date = timezone.now().date()
-    else:
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    if start_date:
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+    if end_date:
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
     
-    # consulta de reservas en el rango
-    reservations_period = Reservation.objects.filter(
-        reservation_date__date__range=[start_date, end_date],
-        status__in=['confirmed', 'paid']
+    report_data = report_service.get_income_report(
+        start_date=start_date_obj,
+        end_date=end_date_obj
     )
     
-    # stats generales
-    total_income = reservations_period.aggregate(total=Sum('price'))['total'] or 0
-    total_reservations = reservations_period.count()
-    average_income = total_income / total_reservations if total_reservations > 0 else 0
-    
-    # ingresos por dia
-    daily_income = reservations_period.extra(
-        select={'date': "date(reservation_date)"}
-    ).values('date').annotate(
-        total=Sum('price'),
-        count=Count('id')
-    ).order_by('date')
-    
-    # ingresos por tipo de asiento
-    income_by_type = reservations_period.values(
-        'seat__type'
-    ).annotate(
-        total=Sum('price'),
-        count=Count('id')
-    ).order_by('-total')
-    
     context = {
-        'start_date': start_date,
-        'end_date': end_date,
-        'total_income': total_income,
-        'total_reservations': total_reservations,
-        'average_income': round(average_income, 2),
-        'daily_income': list(daily_income),
-        'income_by_type': income_by_type,
+        'start_date': report_data['start_date'],
+        'end_date': report_data['end_date'],
+        'total_income': report_data['total_income'],
+        'total_reservations': report_data['total_reservations'],
+        'average_income': report_data['average_income'],
+        'daily_income': report_data['daily_income'],
+        'income_by_type': report_data['income_by_type'],
     }
     
-    # renderizamos el reporte de ingresos
     return render(request, 'reports/income.html', context)
 
 
@@ -225,7 +142,6 @@ def export_data(request):
     """Vista para exportar distintos tipos de datos"""
     
     export_type = request.GET.get('type', 'reservations')
-    format_type = request.GET.get('format', 'csv')
     
     if export_type == 'reservations':
         return export_reservations_csv(request)
@@ -248,22 +164,20 @@ def export_reservations_csv(request):
         'Status', 'Price', 'Reservation Date', 'Origin', 'Destination'
     ])
     
-    reservations = Reservation.objects.select_related(
-        'flight', 'passenger', 'seat'
-    ).all()
+    reservations_data = report_service.export_reservations_data()
     
-    for reservation in reservations:
+    for data in reservations_data:
         writer.writerow([
-            reservation.reservation_code,
-            f"{reservation.flight.origin} - {reservation.flight.destination}",
-            reservation.passenger.name,
-            f"{reservation.passenger.document_type}: {reservation.passenger.document}",
-            reservation.seat.number,
-            reservation.get_status_display(),
-            reservation.price,
-            reservation.reservation_date.strftime('%d/%m/%Y %H:%M'),
-            reservation.flight.origin,
-            reservation.flight.destination
+            data['code'],
+            data['flight'],
+            data['passenger'],
+            data['document'],
+            data['seat'],
+            data['status'],
+            data['price'],
+            data['reservation_date'],
+            data['origin'],
+            data['destination']
         ])
     
     return response
@@ -280,19 +194,17 @@ def export_passengers_csv(request):
         'Birthdate', 'Age', 'Total Flights'
     ])
     
-    passengers = Passenger.objects.annotate(
-        total_flights=Count('reservation', filter=Q(reservation__status__in=['confirmed', 'paid']))
-    )
+    passengers_data = report_service.export_passengers_data()
     
-    for passenger in passengers:
+    for data in passengers_data:
         writer.writerow([
-            passenger.name,
-            f"{passenger.document_type}: {passenger.document}",
-            passenger.email,
-            passenger.phone,
-            passenger.birthdate.strftime('%d/%m/%Y'),
-            passenger.age,
-            passenger.total_flights
+            data['name'],
+            data['document'],
+            data['email'],
+            data['phone'],
+            data['birthdate'],
+            data['age'],
+            data['total_flights']
         ])
     
     return response
@@ -309,22 +221,20 @@ def export_flights_csv(request):
         'Duration', 'Airplane', 'Capacity', 'Reservations', 'Status', 'Base Price'
     ])
     
-    flights = Flight.objects.select_related('airplane').annotate(
-        total_reservations=Count('reservation')
-    )
+    flights_data = report_service.export_flights_data()
     
-    for flight in flights:
+    for data in flights_data:
         writer.writerow([
-            flight.origin,
-            flight.destination,
-            flight.departure_date.strftime('%d/%m/%Y %H:%M'),
-            flight.arrival_date.strftime('%d/%m/%Y %H:%M'),
-            flight.duration,
-            flight.airplane.model,
-            flight.airplane.capacity,
-            flight.total_reservations,
-            flight.get_status_display(),
-            flight.base_price
+            data['origin'],
+            data['destination'],
+            data['departure_date'],
+            data['arrival_date'],
+            data['duration'],
+            data['airplane'],
+            data['capacity'],
+            data['reservations'],
+            data['status'],
+            data['base_price']
         ])
     
     return response

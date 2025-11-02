@@ -5,149 +5,122 @@ from django.utils import timezone
 from datetime import datetime
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 
-from apps.flights.models import Flight, Airplane, Seat
+from services.flight import FlightService, AirplaneService
 from apps.flights.forms import AirplaneForm, FlightForm
 
-# decorador para permitir solo superusuarios
+flight_service = FlightService()
+airplane_service = AirplaneService()
+
+
 def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser)(view_func)
 
-# vista para crear un avion nuevo
+
 @superuser_required
 def create_airplane(request):
     if request.method == 'POST':
         form = AirplaneForm(request.POST)
         if form.is_valid():
-            # guardamos el avion y creamos los asientos automaticamente
-            airplane = form.save()
-            create_seats_for_airplane(airplane)
-            return redirect('flights:create_flight')
+            try:
+                airplane = airplane_service.create_airplane(form.cleaned_data)
+                messages.success(request, f'Airplane {airplane.model} created successfully with seats.')
+                return redirect('flights:create_flight')
+            except ValidationError as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, 'Please correct the errors in the form.')
     else:
         form = AirplaneForm()
     return render(request, 'flights/create_airplane.html', {'form': form})
 
-# funcion para crear los asientos del avion segun filas y columnas
+
 def create_seats_for_airplane(airplane):
-    # borramos los asientos antiguos por si ya existian
-    Seat.objects.filter(airplane=airplane).delete()
-    letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    
-    for row in range(1, airplane.rows + 1):
-        for col_index in range(airplane.columns):
-            if col_index >= len(letters):  # seguridad si hay muchas columnas
-                continue
-            seat_number = f"{row}{letters[col_index]}"
-            
-            # asignamos tipo y precio segun la fila
-            if row <= 2:
-                seat_type = "first"
-                price = 300
-            elif row <= 5:
-                seat_type = "business"
-                price = 200
-            else:
-                seat_type = "economy"
-                price = 100
+    """Función legacy mantenida por compatibilidad - ahora usa el servicio"""
+    pass  # El servicio se encarga de esto automáticamente
 
-            # creamos el asiento
-            Seat.objects.create(
-                airplane=airplane,
-                seat_number=seat_number,
-                row=row,
-                column=letters[col_index],
-                type=seat_type,
-                status='available',
-                extra_price=price
-            )
 
-# vista para crear un vuelo nuevo
 @superuser_required
 def create_flight(request):
     if request.method == 'POST':
         form = FlightForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('flights:list')
+            try:
+                flight = flight_service.create_flight(form.cleaned_data)
+                messages.success(request, f'Flight {flight.flight_number} created successfully.')
+                return redirect('flights:list')
+            except ValidationError as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, 'Please correct the errors in the form.')
     else:
         form = FlightForm()
     return render(request, 'flights/create_flight.html', {'form': form})
 
-# lista de vuelos con filtros y paginacion
+
 def flight_list(request):
-    # obtenemos los filtros de la url
-    origin = request.GET.get('origin', '')
-    destination = request.GET.get('destination', '')
+    filters = {
+        'origin': request.GET.get('origin', ''),
+        'destination': request.GET.get('destination', ''),
+        'status': request.GET.get('status', ''),
+    }
+    
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
-    status = request.GET.get('status', '')
-
-    # solo vuelos activos y con estado programado o embarcando
-    flights = Flight.objects.select_related('airplane').filter(
-        status__in=['scheduled', 'boarding'],
-        is_active=True
-    )
-
-    # aplicamos filtros si el usuario eligio alguno
-    if origin:
-        flights = flights.filter(origin__icontains=origin)
-    if destination:
-        flights = flights.filter(destination__icontains=destination)
+    
     if date_from:
         try:
-            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
-            flights = flights.filter(departure_date__date__gte=date_from_obj)
+            filters['date_from'] = datetime.strptime(date_from, '%Y-%m-%d').date()
         except ValueError:
             pass
+    
     if date_to:
         try:
-            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
-            flights = flights.filter(departure_date__date__lte=date_to_obj)
+            filters['date_to'] = datetime.strptime(date_to, '%Y-%m-%d').date()
         except ValueError:
             pass
-    if status:
-        flights = flights.filter(status=status)
-
-    # ordenamos por fecha de salida
-    flights = flights.order_by('departure_date')
+    
+    flights = flight_service.search_flights(filters)
+    
     paginator = Paginator(flights, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # ciudades para los selects de filtro
-    origin_cities = Flight.objects.values_list('origin', flat=True).distinct().order_by('origin')
-    destination_cities = Flight.objects.values_list('destination', flat=True).distinct().order_by('destination')
+    cities = flight_service.get_available_cities()
 
-    # armamos el context para el template
     context = {
         'page_obj': page_obj,
-        'origin_cities': origin_cities,
-        'destination_cities': destination_cities,
+        'origin_cities': cities['origins'],
+        'destination_cities': cities['destinations'],
         'filters': {
-            'origin': origin,
-            'destination': destination,
+            'origin': filters.get('origin', ''),
+            'destination': filters.get('destination', ''),
             'date_from': date_from,
             'date_to': date_to,
-            'status': status,
+            'status': filters.get('status', ''),
         },
-        'flight_statuses': Flight.FLIGHT_STATUS,
+        'flight_statuses': [('scheduled', 'Scheduled'), ('boarding', 'Boarding')],
         'total_flights': paginator.count,
     }
     return render(request, 'flights/list.html', context)
 
-# detalle del vuelo y asientos
+
 def flight_detail(request, flight_id):
-    flight = get_object_or_404(Flight, id=flight_id)
+    flight = flight_service.get_flight_by_id(flight_id)
+    
+    if not flight:
+        messages.error(request, 'Flight not found.')
+        return redirect('flights:list')
+    
     seats = flight.airplane.seats.all()
 
-    # contamos cantidad total de asientos por clase
     seat_counts = {
         'first_class': seats.filter(type='first').count(),
         'business_class': seats.filter(type='business').count(),
         'economy_class': seats.filter(type='economy').count(),
     }
 
-    # contamos cuantos estan disponibles
     available_counts = {
         'first_class': seats.filter(type='first', status='available').count(),
         'business_class': seats.filter(type='business', status='available').count(),
@@ -162,13 +135,165 @@ def flight_detail(request, flight_id):
     }
     return render(request, 'flights/detail.html', context)
 
-# vista para activar o desactivar un vuelo
+
 @superuser_required
 def toggle_flight_active(request, flight_id):
-    flight = get_object_or_404(Flight, id=flight_id)
-    # cambiamos el estado activo
-    flight.is_active = not flight.is_active
-    flight.save()
-    status = "activado" if flight.is_active else "desactivado"
-    messages.success(request, f"Vuelo {flight.flight_number} {status} con exito.")
+    try:
+        flight = flight_service.toggle_flight_active(flight_id)
+        status = "activado" if flight.is_active else "desactivado"
+        messages.success(request, f"Vuelo {flight.flight_number} {status} con exito.")
+    except ValidationError as e:
+        messages.error(request, str(e))
+    
     return redirect('flights:list')
+
+
+@superuser_required
+def edit_flight(request, flight_id):
+    flight = flight_service.get_flight_by_id(flight_id)
+    
+    if not flight:
+        messages.error(request, 'Flight not found.')
+        return redirect('flights:list')
+    
+    if request.method == 'POST':
+        form = FlightForm(request.POST, instance=flight)
+        if form.is_valid():
+            try:
+                flight = flight_service.update_flight(flight.id, form.cleaned_data)
+                messages.success(request, f"Flight {flight.flight_number} updated successfully.")
+                return redirect('flights:detail', flight_id=flight.id)
+            except ValidationError as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, 'Please correct the errors in the form.')
+    else:
+        form = FlightForm(instance=flight)
+    
+    return render(request, 'flights/edit_flight.html', {'form': form, 'flight': flight})
+
+
+@superuser_required
+def delete_flight(request, flight_id):
+    flight = flight_service.get_flight_by_id(flight_id)
+    
+    if not flight:
+        messages.error(request, 'Flight not found.')
+        return redirect('flights:list')
+    
+    if request.method == 'POST':
+        try:
+            flight_number = flight.flight_number
+            flight_service.delete_flight(flight_id)
+            messages.success(request, f"Flight {flight_number} deleted successfully.")
+            return redirect('flights:list')
+        except ValidationError as e:
+            messages.error(request, str(e))
+    
+    return render(request, 'flights/delete_flight.html', {'flight': flight})
+
+
+@superuser_required
+def airplane_list(request):
+    airplanes = airplane_service.get_all_airplanes()
+    
+    for airplane in airplanes:
+        airplane.total_seats = airplane.seats.count()
+        airplane.total_flights = airplane.flights.count()
+        airplane.active_flights = airplane.flights.filter(is_active=True, status='scheduled').count()
+    
+    context = {
+        'airplanes': airplanes,
+        'total_airplanes': airplanes.count(),
+        'active_airplanes': airplanes.filter(active=True).count(),
+    }
+    return render(request, 'flights/airplane_list.html', context)
+
+
+@superuser_required
+def airplane_detail(request, airplane_id):
+    try:
+        data = airplane_service.get_airplane_with_layout(airplane_id)
+        
+        flights = data['airplane'].flights.all().order_by('-departure_date')[:10]
+        data['flights'] = flights
+        
+        return render(request, 'flights/airplane_detail.html', data)
+        
+    except ValidationError as e:
+        messages.error(request, str(e))
+        return redirect('flights:airplane_list')
+
+
+@superuser_required
+def edit_airplane(request, airplane_id):
+    airplane = airplane_service.get_airplane_by_id(airplane_id)
+    
+    if not airplane:
+        messages.error(request, 'Airplane not found.')
+        return redirect('flights:airplane_list')
+    
+    if request.method == 'POST':
+        form = AirplaneForm(request.POST, instance=airplane)
+        if form.is_valid():
+            try:
+                old_rows = airplane.rows
+                old_columns = airplane.columns
+                
+                airplane = airplane_service.update_airplane(airplane.id, form.cleaned_data)
+                
+                if old_rows != airplane.rows or old_columns != airplane.columns:
+                    messages.warning(request, "Seat layout has been regenerated. Previous seat reservations may be affected.")
+                
+                messages.success(request, f"Airplane {airplane.model} updated successfully.")
+                return redirect('flights:airplane_detail', airplane_id=airplane.id)
+            except ValidationError as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, 'Please correct the errors in the form.')
+    else:
+        form = AirplaneForm(instance=airplane)
+    
+    context = {
+        'form': form,
+        'airplane': airplane,
+    }
+    return render(request, 'flights/edit_airplane.html', context)
+
+
+@superuser_required
+def delete_airplane(request, airplane_id):
+    airplane = airplane_service.get_airplane_by_id(airplane_id)
+    
+    if not airplane:
+        messages.error(request, 'Airplane not found.')
+        return redirect('flights:airplane_list')
+    
+    flights_count = airplane.flights.count()
+    
+    if request.method == 'POST':
+        try:
+            airplane_model = airplane.model
+            airplane_service.delete_airplane(airplane_id)
+            messages.success(request, f"Airplane {airplane_model} deleted successfully.")
+            return redirect('flights:airplane_list')
+        except ValidationError as e:
+            messages.error(request, str(e))
+    
+    context = {
+        'airplane': airplane,
+        'flights_count': flights_count,
+    }
+    return render(request, 'flights/delete_airplane.html', context)
+
+
+@superuser_required
+def toggle_airplane_active(request, airplane_id):
+    try:
+        airplane = airplane_service.toggle_airplane_active(airplane_id)
+        status = "activated" if airplane.active else "deactivated"
+        messages.success(request, f"Airplane {airplane.model} {status} successfully.")
+    except ValidationError as e:
+        messages.error(request, str(e))
+    
+    return redirect('flights:airplane_list')

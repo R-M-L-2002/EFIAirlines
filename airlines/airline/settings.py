@@ -42,11 +42,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    #Apps de la aerolinea
-    'apps.accounts',
+    # Apps de la aerolinea
+    'apps.accounts.apps.AccountsConfig',
     'apps.flights.apps.FlightsConfig',
     'apps.passengers.apps.PassengersConfig',
-    'apps.reports',
+    'apps.reports.apps.ReportsConfig',
     'apps.reservations.apps.ReservationsConfig',
 ]
 

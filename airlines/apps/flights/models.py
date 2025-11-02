@@ -2,11 +2,13 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.auth.models import User
 
 # Create your models here.
 
 class Airplane(models.Model):
     model = models.CharField(_("Airplane model"), max_length=100)
+    registration = models.CharField(_("Registration"), max_length=20, unique=True, blank=True, null=True)
     capacity = models.PositiveIntegerField(_("Capacity"))
     rows = models.PositiveIntegerField(_("Rows"))
     columns = models.PositiveIntegerField(_("Columns"))
@@ -20,6 +22,8 @@ class Airplane(models.Model):
         ordering = ['model']
 
     def __str__(self):
+        if self.registration:
+            return f"{self.model} ({self.registration})"
         return f"{self.model} ({self.capacity} seats)"
 
     def create_seats(self):
@@ -84,6 +88,17 @@ class Flight(models.Model):
         verbose_name=_("Airplane"),
         default=1
     )
+    
+    managed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='managed_flights',
+        verbose_name=_("Managed by"),
+        help_text=_("User who manages this flight")
+    )
+    
     flight_number = models.CharField(_("Flight number"), max_length=10, unique=True)
     origin = models.CharField(_("Origin"), max_length=100)
     destination = models.CharField(_("Destination"), max_length=100)
@@ -112,14 +127,6 @@ class Flight(models.Model):
         verbose_name = _("Flight")
         verbose_name_plural = _("Flights")
         ordering = ['-departure_date'] # ordena del mas proximo al mas lejano
-
-    def save(self, *args, **kwargs):
-        """
-        Calcula automaticamente la duracion del vuelo antes de guardar.
-        """
-        if self.departure_date and self.arrival_date:
-            self.duration = self.arrival_date - self.departure_date
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.flight_number} - {self.origin} → {self.destination}"

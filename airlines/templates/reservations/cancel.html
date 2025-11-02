@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cancel Reservation - EFI Airlines{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Cancel Reservation
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone. Are you sure you want to cancel this reservation?
+                    </div>
+
+                    <div class="reservation-details mb-4">
+                        <h5 class="mb-3">Reservation Details</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th width="30%">Reservation Code:</th>
+                                <td><strong>{{ reservation.reservation_code }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Flight:</th>
+                                <td>{{ reservation.flight.flight_number }} - {{ reservation.flight.origin }} to {{ reservation.flight.destination }}</td>
+                            </tr>
+                            <tr>
+                                <th>Departure:</th>
+                                <td>{{ reservation.flight.departure_date|date:"F d, Y - g:i A" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Passenger:</th>
+                                <td>{{ reservation.passenger.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Seat:</th>
+                                <td>{{ reservation.seat.seat_number }} ({{ reservation.seat.get_type_display }})</td>
+                            </tr>
+                            <tr>
+                                <th>Total Price:</th>
+                                <td>${{ reservation.total_price }}</td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    <span class="badge bg-{{ reservation.status|yesno:'primary,warning,danger' }}">
+                                        {{ reservation.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    {% if reservation.can_cancel %}
+                        <form method="post" class="mt-4">
+                            {% csrf_token %}
+                            
+                            {# Added form fields for cancellation reason, comments, and confirmation #}
+                            <div class="mb-3">
+                                <label for="{{ form.reason.id_for_label }}" class="form-label">{{ form.reason.label }}</label>
+                                {{ form.reason }}
+                                {% if form.reason.errors %}
+                                    <div class="text-danger">{{ form.reason.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.comments.id_for_label }}" class="form-label">{{ form.comments.label }}</label>
+                                {{ form.comments }}
+                                {% if form.comments.errors %}
+                                    <div class="text-danger">{{ form.comments.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    {{ form.confirm_cancellation }}
+                                    <label class="form-check-label" for="{{ form.confirm_cancellation.id_for_label }}">
+                                        {{ form.confirm_cancellation.label }}
+                                    </label>
+                                    {% if form.confirm_cancellation.errors %}
+                                        <div class="text-danger">{{ form.confirm_cancellation.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {{ form.non_field_errors }}
+                                </div>
+                            {% endif %}
+                            
+                            <div class="d-flex justify-content-between">
+                                {# Fixed URL to use reservation_code instead of reservation.id #}
+                                <a href="{% url 'reservations:detail' reservation.reservation_code %}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left me-2"></i>Go Back
+                                </a>
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-x-circle me-2"></i>Confirm Cancellation
+                                </button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="alert alert-danger">
+                            <i class="bi bi-x-circle-fill me-2"></i>
+                            This reservation cannot be cancelled. It may have already been completed or cancelled.
+                        </div>
+                        {# Fixed URL to use reservation_code instead of reservation.id #}
+                        <a href="{% url 'reservations:detail' reservation.reservation_code %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Reservation
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

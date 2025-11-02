@@ -200,3 +200,108 @@ class PassengerForm(forms.ModelForm):
         if Passenger.objects.filter(document=document).exclude(pk=self.instance.pk if self.instance else None).exists():
             raise ValidationError('This document is already registered')
         return document
+
+
+class UserManagementForm(forms.ModelForm):
+    """
+    Form para que el admin cree o edite usuarios
+    """
+    password = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Leave blank to keep current password'
+        }),
+        label='Password',
+        help_text='Leave blank if editing and you don\'t want to change the password'
+    )
+    
+    is_staff = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='Staff status',
+        help_text='Designates whether the user can log into the admin site'
+    )
+    
+    is_superuser = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='Superuser status',
+        help_text='Designates that this user has all permissions'
+    )
+    
+    is_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='Active',
+        help_text='Designates whether this user should be treated as active'
+    )
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email', 'is_staff', 'is_superuser', 'is_active']
+        widgets = {
+            'username': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Username'
+            }),
+            'first_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'First name'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Last name'
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'email@example.com'
+            }),
+        }
+        labels = {
+            'username': 'Username',
+            'first_name': 'First Name',
+            'last_name': 'Last Name',
+            'email': 'Email',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Si estamos editando, el password no es requerido
+        if self.instance and self.instance.pk:
+            self.fields['password'].required = False
+            self.fields['password'].help_text = 'Leave blank to keep current password'
+        else:
+            self.fields['password'].required = True
+            self.fields['password'].help_text = 'Required for new users'
+
+    def clean_email(self):
+        """
+        Valida que el email no este usado por otro usuario
+        """
+        email = self.cleaned_data.get('email')
+        if email:
+            if self.instance and self.instance.pk:
+                if User.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
+                    raise ValidationError('This email is already registered')
+            else:
+                if User.objects.filter(email=email).exists():
+                    raise ValidationError('This email is already registered')
+        return email
+
+    def save(self, commit=True):
+        """
+        Guarda el usuario y maneja el password
+        """
+        user = super().save(commit=False)
+        password = self.cleaned_data.get('password')
+        
+        # Si hay password nuevo, lo seteamos
+        if password:
+            user.set_password(password)
+        
+        if commit:
+            user.save()
+        
+        return user

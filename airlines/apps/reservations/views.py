@@ -5,252 +5,400 @@ Este archivo contiene:
 - Creación de nuevas reservas
 - Gestión de reservas existentes
 - Confirmación y cancelación
+- Confirmación y pago unificado
 - Generación de boletos
 """
 
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db import transaction
-from django.http import JsonResponse
-from django.utils import timezone
 from django.core.paginator import Paginator
-from django.views.decorators.http import require_http_methods
-import json
+from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 
 from .models import Reservation, Ticket
-from .forms import NewReservationForm, ConfirmReservationForm, CancelReservationForm, SeatSelectionForm
-from apps.flights.models import Flight, Seat
+from .forms import NewReservationForm, ConfirmReservationForm, CancelReservationForm
+from apps.flights.models import Flight
 from apps.passengers.models import Passenger
 
-# Create your views here.
+from services.reservation import ReservationService, TicketService
+from services.passenger import PassengerService
+
+reservation_service = ReservationService()
+ticket_service = TicketService()
+passenger_service = PassengerService()
+
 
 @login_required
 def my_reservations(request):
-    """
-    Vista que muestra todas las reservas del usuario logueado.
-    Permite filtrar por estado y paginar los resultados.
-    """
+    """Muestra todas las reservas del usuario logueado, con filtros y paginación."""
+    try:
+        passenger = passenger_service.get_passenger_by_email(request.user.email)
+        if not passenger:
+            messages.warning(request, 'Complete su perfil de pasajero antes de ver reservas.')
+            return redirect('accounts:complete_profile')
 
-    # Filtramos las reservas asociadas al pasajero del usuario logueado
-    # IMPORTANTE: passenger__user hace referencia a que Passenger tiene un campo OneToOneField con User
-    reservations = Reservation.objects.filter(passenger__user=request.user)
+        reservations = reservation_service.get_reservations_by_passenger(passenger.id)
 
-    # Obtenemos el filtro por estado desde GET, si viene
-    status_filter = request.GET.get('status', '')
-    if status_filter:
-        reservations = reservations.filter(status=status_filter)
+        status_filter = request.GET.get('status', '')
+        if status_filter:
+            reservations = reservations.filter(status=status_filter)
 
-    # Lista de estados disponibles para los filtros en el template
-    reservation_statuses = Reservation.STATUS_CHOICES
+        stats = reservation_service.get_passenger_stats(passenger.id)
+        reservation_statuses = Reservation.STATUS_CHOICES
 
-    # Calculamos estadisticas para mostrar en el dashboard
-    stats = {
-        'total': reservations.count(),
-        'pending': reservations.filter(status='pending').count(),
-        'confirmed': reservations.filter(status='confirmed').count(),
-        'paid': reservations.filter(status='paid').count(),
-        'completed': reservations.filter(status='completed').count(),
-        'canceled': reservations.filter(status='cancelled').count(),
-    }
+        paginator = Paginator(reservations, 6)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
 
-    # Paginamos las reservas, 6 por pagina
-    paginator = Paginator(reservations, 6)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+        return render(request, 'reservations/list.html', {
+            'page_obj': page_obj,
+            'reservation_statuses': reservation_statuses,
+            'status_filter': status_filter,
+            'stats': stats
+        })
 
-    # Renderizamos el template con todas las variables necesarias
-    return render(request, 'reservations/list.html', {
-        'page_obj': page_obj,                  # reservas paginadas
-        'reservation_statuses': reservation_statuses,  # lista de estados
-        'status_filter': status_filter,        # filtro actual
-        'stats': stats                         # estadisticas
-    })
-
-@login_required
-def confirm_reservation(request, reservation_code):
-    """
-    Vista para confirmar una reserva pendiente.
-    """
-    reservation = get_object_or_404(Reservation, reservation_code=reservation_code)
-
-    if request.method == 'POST':
-        form = ConfirmReservationForm(request.POST, instance=reservation)
-        if form.is_valid():
-            # Cambiamos el estado
-            reservation.status = Reservation.STATUS_CONFIRMED
-            reservation.save()
-            messages.success(request, f'Reservation {reservation_code} confirmed successfully.')
-            return redirect('reservations:my_reservations')
-        else:
-            print(form.errors)  # Para debug
-    else:
-        form = ConfirmReservationForm(instance=reservation)
-
-    return render(request, 'reservations/confirm.html', {
-        'form': form,
-        'reservation': reservation
-    })
-
-
-@login_required
-def cancel_reservation(request, reservation_code):
-    """
-    Vista para cancelar una reserva existente
-    """
-    reservation = get_object_or_404(Reservation, reservation_code=reservation_code)
-
-    if request.method == 'POST':
-        form = CancelReservationForm(request.POST)
-        if form.is_valid():
-            # actualizamos el status de la reserva
-            reservation.status = 'cancelled'
-            reservation.cancellation_reason = form.cleaned_data['reason']
-            reservation.cancellation_comments = form.cleaned_data['comments']
-            reservation.save()
-            messages.success(request, f'Reservation {reservation_code} cancelled successfully.')
-            return redirect('reservations:detail')
-    else:
-        form = CancelReservationForm()
-
-    return render(request, 'reservations/cancel.html', {
-        'form': form,
-        'reservation': reservation
-    })
-
-@login_required
-def reservation_detail(request, reservation_code):
-    """
-    Vista para mostrar el detalle de una reserva
-    """
-    # traemos la reserva o 404 si no existe
-    reservation = get_object_or_404(Reservation, reservation_code=reservation_code)
-
-    return render(request, 'reservations/detail.html', {
-        'reservation': reservation
-    })
-
+    except Exception:
+        messages.error(request, 'Error al cargar las reservas.')
+        return redirect('accounts:home')
 
 
 @login_required
 def new_reservation(request, flight_id):
-    """
-    Vista para crear una reserva nueva.
-    Incluye selección de asiento y confirmación.
-    """
-    # busco el vuelo, si no existe tiro 404
-    flight = get_object_or_404(Flight, id=flight_id)
-    
-    # chequeo que el vuelo esté disponible para reservas
-    if flight.status not in ['scheduled', 'boarding']:
-        messages.error(request, 'This flight is not available for reservations.')
-        return redirect('flights:detail', flight_id=flight.id)
-    
-    # chequeo que la fecha de salida no haya pasado
-    if flight.departure_date <= timezone.now():
-        messages.error(request, 'Cannot make reservations for flights that have already departed.')
-        return redirect('flights:detail', flight_id=flight.id)
-    
-    # intento agarrar el pasajero asociado al usuario logueado
+    """Crea una reserva nueva con selección de asiento."""
     try:
-        passenger = Passenger.objects.get(email=request.user.email)
-    except Passenger.DoesNotExist:
-        messages.warning(request, 'You need to complete your passenger profile before booking.')
-        return redirect('accounts:complete_profile')
-    
-    # veo si ya tiene una reserva para este vuelo
-    existing_reservation = Reservation.objects.filter(
-        flight=flight,
-        passenger=passenger,
-        status__in=['pending', 'confirmed', 'paid', 'completed']
-    ).first()
-    
-    if existing_reservation:
-        messages.info(request, f'You already have a reservation for this flight: {existing_reservation.reservation_code}')
-        return redirect('reservations:detail', reservation_code=existing_reservation.reservation_code)
-    
-    # agarro los asientos que ya están ocupados
-    occupied_seats = Reservation.objects.filter(
-        flight=flight,
-        status__in=['confirmed', 'paid', 'completed']
-    ).values_list('seat_id', flat=True)
-    
-    # filtro los asientos disponibles, saco los ocupados y los que están en mantenimiento
-    available_seats = flight.airplane.seats.exclude(
-        id__in=occupied_seats
-    ).exclude(status='maintenance').order_by('row', 'column')
-    
-    if not available_seats.exists():
-        messages.error(request, 'No seats are available for this flight.')
-        return redirect('flights:detail', flight_id=flight.id)
-    
-    # organizo los asientos por fila para renderizar el mapa
-    seats_by_row = {}
-    for seat in available_seats:
-        if seat.row not in seats_by_row:
-            seats_by_row[seat.row] = []
-        
-        # calculo el precio según el asiento
-        seat_price = flight.base_price + seat.extra_price
-        seats_by_row[seat.row].append({
-            'seat': seat,
-            'price': seat_price,
-            'available': seat.id not in occupied_seats
+        passenger = passenger_service.get_passenger_by_email(request.user.email)
+        if not passenger:
+            messages.warning(request, 'Complete su perfil antes de reservar.')
+            return redirect('accounts:complete_profile')
+
+        seat_data = reservation_service.get_available_seats_for_flight(flight_id)
+        flight = seat_data['flight']
+        seats_by_row = seat_data['seats_by_row']
+        total_available = seat_data['total_available']
+
+        if total_available == 0:
+            messages.error(request, 'No hay asientos disponibles para este vuelo.')
+            return redirect('flights:detail', flight_id=flight.id)
+
+        if request.method == 'POST':
+            selected_seat_id = request.POST.get('selected_seat')
+            if not selected_seat_id:
+                messages.error(request, 'Debe seleccionar un asiento.')
+            else:
+                try:
+                    reservation = reservation_service.create_reservation(
+                        flight_id=flight.id,
+                        passenger_id=passenger.id,
+                        seat_id=int(selected_seat_id),
+                        notes=request.POST.get('notes', '')
+                    )
+                    messages.success(
+                        request,
+                        f'Reserva creada con éxito. Código: {reservation.reservation_code}'
+                    )
+                    return redirect('reservations:confirm_and_pay', reservation_code=reservation.reservation_code)
+                except ValidationError as e:
+                    messages.error(request, str(e))
+                    return redirect('reservations:new', flight_id=flight.id)
+
+        return render(request, 'reservations/new.html', {
+            'flight': flight,
+            'passenger': passenger,
+            'seats_by_row': seats_by_row,
+            'total_available': total_available,
         })
-    
-    # si viene un POST intento crear la reserva
-    if request.method == 'POST':
-        selected_seat_id = request.POST.get('selected_seat')
-        
-        if not selected_seat_id:
-            messages.error(request, 'You must select a seat.')
-            return render(request, 'reservations/new.html', {
-                'flight': flight,
-                'passenger': passenger,
-                'seats_by_row': dict(sorted(seats_by_row.items())),
-                'occupied_seats': list(occupied_seats),
-            })
-        
+
+    except ValidationError as e:
+        messages.error(request, str(e))
+        return redirect('flights:list')
+    except Exception:
+        messages.error(request, 'Error al crear la reserva.')
+        return redirect('flights:list')
+
+
+@login_required
+def reservation_detail(request, reservation_code):
+    """Muestra detalle de la reserva y ticket si existe."""
+    try:
+        reservation = reservation_service.get_reservation_by_code(reservation_code)
+        if not reservation:
+            messages.error(request, 'Reserva no encontrada.')
+            return redirect('reservations:my_reservations')
+
+        ticket = None
+        if reservation.status in ['paid', 'completed']:
+            ticket = ticket_service.get_ticket_by_reservation_code(reservation_code)
+
+        return render(request, 'reservations/detail.html', {
+            'reservation': reservation,
+            'ticket': ticket
+        })
+
+    except Exception:
+        messages.error(request, 'Error al cargar la reserva.')
+        return redirect('reservations:my_reservations')
+
+
+@login_required
+def cancel_reservation(request, reservation_code):
+    """Cancela una reserva existente."""
+    try:
+        reservation = reservation_service.get_reservation_by_code(reservation_code)
+        if not reservation:
+            messages.error(request, 'Reserva no encontrada.')
+            return redirect('reservations:my_reservations')
+
+        if request.method == 'POST':
+            form = CancelReservationForm(request.POST)
+            if form.is_valid():
+                try:
+                    reservation_service.cancel_reservation(
+                        reservation_code,
+                        reason=form.cleaned_data['reason'],
+                        comments=form.cleaned_data['comments']
+                    )
+                    messages.success(request, f'Reserva {reservation_code} cancelada exitosamente.')
+                    return redirect('reservations:detail', reservation_code=reservation_code)
+                except ValidationError as e:
+                    messages.error(request, str(e))
+        else:
+            form = CancelReservationForm()
+
+        return render(request, 'reservations/cancel.html', {
+            'form': form,
+            'reservation': reservation
+        })
+
+    except Exception:
+        messages.error(request, 'Error al cancelar la reserva.')
+        return redirect('reservations:my_reservations')
+
+
+@login_required
+def confirm_and_pay_reservation(request, reservation_code):
+    """
+    Confirma una reserva pendiente y procesa el pago.
+    """
+    try:
+        # 🔹 Obtener la reserva y recargar relaciones críticas
+        reservation = reservation_service.get_reservation_by_code(reservation_code)
+        if not reservation:
+            messages.error(request, 'Reserva no encontrada.')
+            return redirect('reservations:my_reservations')
+
         try:
-            seat = Seat.objects.get(id=selected_seat_id)
-            
-            # chequeo rápido otra vez que el asiento siga libre
-            if seat.id in occupied_seats:
-                messages.error(request, 'The selected seat is no longer available.')
-                return redirect('reservations:new', flight_id=flight.id)
-            
-            # todo dentro de una transacción por si falla algo
-            with transaction.atomic():
-                # creo la reserva
-                reservation = Reservation.objects.create(
-                    flight=flight,
-                    passenger=passenger,
-                    seat=seat,
-                    status='pending',
-                    notes=request.POST.get('notes', ''),
-                    total_price=flight.base_price + seat.extra_price
-                )
-                
-                messages.success(
-                    request,
-                    f'Reservation successfully created. Code: {reservation.reservation_code}'
-                )
-                # redirijo a la página de confirmación
-                return redirect('reservations:confirm', reservation_code=reservation.reservation_code)
-                
-        except Seat.DoesNotExist:
-            messages.error(request, 'Invalid seat.')
-        except Exception as e:
-            print("ERROR:", e)
-            messages.error(request, 'Error creating the reservation. Please try again.')
-    
-    # contexto para renderizar el template
-    context = {
-        'flight': flight,
-        'passenger': passenger,
-        'seats_by_row': dict(sorted(seats_by_row.items())),
-        'occupied_seats': list(occupied_seats),
-        'total_available': available_seats.count(),
-    }
-    
-    return render(request, 'reservations/new.html', context)
+            reservation.refresh_from_db()  # asegura que seat y flight estén cargados
+            _ = reservation.seat  # acceso forzado para detectar problemas de integridad
+        except Reservation.seat.RelatedObjectDoesNotExist:
+            messages.error(request, 'Error crítico: la reserva no tiene un asiento asignado.')
+            return redirect('reservations:detail', reservation_code=reservation_code)
+
+        # Validar usuario
+        if reservation.passenger.email.lower() != request.user.email.lower():
+            messages.error(request, 'No tiene permiso para esta reserva.')
+            return redirect('reservations:my_reservations')
+
+        # Verificar estado de la reserva
+        if reservation.status == 'canceled':
+            messages.error(request, 'La reserva ha sido cancelada.')
+            return redirect('reservations:my_reservations')
+
+        if reservation.status in ['completed', 'paid']:
+            messages.info(request, 'La reserva ya ha sido pagada.')
+            return redirect('reservations:detail', reservation_code=reservation_code)
+
+        # Procesar formulario POST
+        if request.method == 'POST':
+            form = ConfirmReservationForm(request.POST, instance=reservation)
+            if form.is_valid():
+                try:
+                    # Confirmar reserva si está pendiente
+                    if reservation.status == 'pending':
+                        reservation_service.confirm_reservation(reservation_code)
+
+                    # Procesar pago
+                    reservation_service.process_payment(reservation_code, payment_method='credit_card')
+
+                    messages.success(request, 'Reserva confirmada y pago exitoso. Ticket generado.')
+                    return redirect('reservations:payment_success', reservation_code=reservation_code)
+
+                except ValidationError as e:
+                    messages.error(request, f'Error de validación: {str(e)}')
+                except Exception as e:
+                    import traceback
+                    tb = traceback.format_exc()
+                    messages.error(request, f'Error inesperado al procesar la reserva y el pago: {str(e)}\nTrace:\n{tb}')
+            else:
+                messages.error(request, 'Debe aceptar los términos y condiciones.')
+
+        else:
+            form = ConfirmReservationForm(instance=reservation)
+
+        return render(request, 'reservations/confirm.html', {
+            'reservation': reservation,
+            'form': form
+        })
+
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        messages.error(request, f'Error crítico inesperado: {str(e)}\nTrace:\n{tb}')
+        return redirect('reservations:my_reservations')
+
+
+@login_required
+def payment_success(request, reservation_code):
+    """Vista de éxito mostrando ticket generado."""
+    try:
+        reservation = reservation_service.get_reservation_by_code(reservation_code)
+        if not reservation or reservation.passenger.email != request.user.email:
+            messages.error(request, 'Reserva no encontrada o acceso denegado.')
+            return redirect('reservations:my_reservations')
+
+        ticket = ticket_service.get_ticket_by_reservation_code(reservation_code)
+        if not ticket:
+            messages.error(request, 'No se encontró ticket para esta reserva.')
+            return redirect('reservations:detail', reservation_code=reservation_code)
+
+        return render(request, 'reservations/payment_success.html', {
+            'reservation': reservation,
+            'ticket': ticket
+        })
+
+    except Exception:
+        messages.error(request, 'Error al cargar el ticket.')
+        return redirect('reservations:my_reservations')
+
+
+@login_required
+def download_ticket_pdf(request, reservation_code):
+    """Genera y descarga el ticket en PDF."""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.units import inch
+    from reportlab.pdfgen import canvas
+    from reportlab.lib import colors
+    from io import BytesIO
+
+    try:
+        reservation = reservation_service.get_reservation_by_code(reservation_code)
+        if not reservation or reservation.passenger.email != request.user.email:
+            messages.error(request, 'Reserva no encontrada o acceso denegado.')
+            return redirect('reservations:my_reservations')
+
+        ticket = ticket_service.get_ticket_by_reservation_code(reservation_code)
+        if not ticket:
+            messages.error(request, 'No se encontró ticket para esta reserva.')
+            return redirect('reservations:detail', reservation_code=reservation_code)
+
+        # Crear PDF
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
+
+        p.setFont("Helvetica-Bold", 24)
+        p.drawString(1*inch, height - 1*inch, "ELECTRONIC TICKET")
+
+        p.setStrokeColor(colors.HexColor('#0066cc'))
+        p.setLineWidth(2)
+        p.line(1*inch, height - 1.3*inch, width - 1*inch, height - 1.3*inch)
+
+        y = height - 2*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Ticket Number:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, ticket.barcode)
+
+        y -= 0.3*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Reservation Code:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, reservation.reservation_code)
+
+        # Información pasajero y vuelo
+        y -= 0.6*inch
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(1*inch, y, "PASSENGER INFORMATION")
+        y -= 0.3*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Name:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, reservation.passenger.name)
+
+        y -= 0.3*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Document:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, f"{reservation.passenger.get_document_type_display()}: {reservation.passenger.document}")
+
+        # Información vuelo
+        y -= 0.6*inch
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(1*inch, y, "FLIGHT INFORMATION")
+        y -= 0.3*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Flight Number:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, reservation.flight.flight_number)
+
+        y -= 0.3*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Route:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, f"{reservation.flight.origin} → {reservation.flight.destination}")
+
+        y -= 0.3*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Departure:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, reservation.flight.departure_date.strftime("%B %d, %Y at %H:%M"))
+
+        y -= 0.3*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Arrival:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, reservation.flight.arrival_date.strftime("%B %d, %Y at %H:%M"))
+
+        # Asiento
+        y -= 0.6*inch
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(1*inch, y, "SEAT INFORMATION")
+        y -= 0.3*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Seat Number:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, reservation.seat.seat_number)
+
+        # Precio
+        y -= 0.6*inch
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(1*inch, y, "PAYMENT INFORMATION")
+        y -= 0.3*inch
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(1*inch, y, "Total Price:")
+        p.setFont("Helvetica", 12)
+        p.drawString(3*inch, y, f"${reservation.total_price}")
+
+        # Barcode
+        y -= 0.6*inch
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(1*inch, y, "BARCODE")
+        y -= 0.3*inch
+        p.setFont("Courier-Bold", 16)
+        p.drawString(1*inch, y, ticket.barcode)
+
+        p.setFont("Helvetica-Oblique", 10)
+        p.drawString(1*inch, 1*inch, "Llegue al aeropuerto al menos 2 horas antes de la salida.")
+        p.drawString(1*inch, 0.7*inch, f"Fecha de emisión: {ticket.issue_date.strftime('%B %d, %Y at %H:%M')}")
+
+        p.showPage()
+        p.save()
+
+        buffer.seek(0)
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="ticket_{reservation.reservation_code}.pdf"'
+        return response
+
+    except Exception:
+        messages.error(request, 'Error al generar el PDF.')
+        return redirect('reservations:my_reservations')

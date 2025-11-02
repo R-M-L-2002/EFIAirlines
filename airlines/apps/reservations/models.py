@@ -1,8 +1,8 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 from datetime import timedelta
-import uuid
 import random
 import string
 
@@ -17,14 +17,14 @@ class Reservation(models.Model):
     STATUS_PENDING = 'pending'
     STATUS_CONFIRMED = 'confirmed'
     STATUS_PAID = 'paid'
-    STATUS_CANCELLED = 'cancelled'
+    STATUS_CANCELLED = 'canceled'
     STATUS_COMPLETED = 'completed'
 
     STATUS_CHOICES = [
         (STATUS_PENDING, _('Pending')),
         (STATUS_CONFIRMED, _('Confirmed')),
         (STATUS_PAID, _('Paid')),
-        (STATUS_CANCELLED, _('Cancelled')),
+        (STATUS_CANCELLED, _('Canceled')),
         (STATUS_COMPLETED, _('Completed')),
     ]
 
@@ -42,10 +42,10 @@ class Reservation(models.Model):
         verbose_name=_("Passenger")
     )
 
-    seat = models.ForeignKey(
+    seat = models.OneToOneField(
         Seat,
         on_delete=models.CASCADE,
-        related_name='reservations',
+        related_name='reservation',
         verbose_name=_("Seat")
     )
 
@@ -68,7 +68,6 @@ class Reservation(models.Model):
     expiration_date = models.DateTimeField(_("Expiration date"), blank=True)
     notes = models.TextField(_("Notes"), blank=True, null=True)
 
-    # <- campos nuevos para pagos
     payment_method = models.CharField(
         _("Payment Method"),
         max_length=20,
@@ -81,18 +80,78 @@ class Reservation(models.Model):
         null=True
     )
 
+    cancellation_reason = models.CharField(
+        _("Cancellation Reason"),
+        max_length=100,
+        blank=True,
+        null=True
+    )
+    cancellation_comments = models.TextField(
+        _("Cancellation Comments"),
+        blank=True,
+        null=True
+    )
+
     class Meta:
         verbose_name = _("Reservation")
         verbose_name_plural = _("Reservations")
-        unique_together = ['flight', 'seat']
+        unique_together = [
+            ['flight', 'passenger']  # Un pasajero no puede tener más de una reserva por vuelo
+        ]
         ordering = ['-reservation_date']
+
+    def clean(self):
+        """Validaciones personalizadas antes de guardar"""
+        super().clean()
+        
+        # Validar que el asiento pertenece al avión del vuelo
+        if self.seat and self.flight and self.seat.airplane != self.flight.airplane:
+            raise ValidationError({
+                'seat': _('The selected seat does not belong to the flight airplane.')
+            })
+        
+        # Validar que el asiento no esté en mantenimiento
+        if self.seat and self.seat.status == 'maintenance':
+            raise ValidationError({
+                'seat': _('The selected seat is under maintenance and cannot be reserved.')
+            })
+        
+        # Validar que el vuelo no haya partido
+        if self.flight and self.flight.departure_date < timezone.now():
+            raise ValidationError({
+                'flight': _('Cannot reserve a seat on a flight that has already departed.')
+            })
+        
+        # Validar duplicados: solo reservas activas, ignora canceladas
+        if Reservation.objects.filter(
+            flight=self.flight,
+            passenger=self.passenger
+        ).exclude(status=Reservation.STATUS_CANCELLED).exclude(pk=self.pk).exists():
+            raise ValidationError('You already have an active reservation for this flight.')
 
     def save(self, *args, **kwargs):
         if not self.reservation_code:
             self.reservation_code = self.generate_reservation_code()
         if not self.expiration_date:
             self.expiration_date = timezone.now() + timedelta(hours=24)
+        
+        is_new = self.pk is None
+        old_status = None
+        if not is_new:
+            old_status = Reservation.objects.get(pk=self.pk).status
+        
         super().save(*args, **kwargs)
+        
+        # Actualizar estado del asiento según el estado de la reserva
+        if self.status in [self.STATUS_CONFIRMED, self.STATUS_PAID]:
+            self.seat.status = 'reserved'
+            self.seat.save()
+        elif self.status == self.STATUS_COMPLETED:
+            self.seat.status = 'occupied'
+            self.seat.save()
+        elif self.status == self.STATUS_CANCELLED:
+            self.seat.status = 'available'
+            self.seat.save()
 
     def generate_reservation_code(self):
         while True:
@@ -101,7 +160,7 @@ class Reservation(models.Model):
                 return code
 
     def __str__(self):
-        return f"{self.reservation_code} - {self.passenger.first_name}"
+        return f"{self.reservation_code} - {self.passenger.name}"
 
     @property
     def is_expired(self):
@@ -110,9 +169,9 @@ class Reservation(models.Model):
     @property
     def can_cancel(self):
         """
-        Permite cancelar si está confirmado o pagado y no venció el vuelo
+        Permite cancelar si está pendiente, confirmado o pagado y no venció el vuelo
         """
-        return self.status in [self.STATUS_CONFIRMED, self.STATUS_PAID] and not self.is_expired
+        return self.status in [self.STATUS_PENDING, self.STATUS_CONFIRMED, self.STATUS_PAID] and not self.is_expired
 
 
 class Ticket(models.Model):
@@ -122,13 +181,13 @@ class Ticket(models.Model):
     """
     TICKET_ISSUED = 'issued'
     TICKET_USED = 'used'
-    TICKET_CANCELLED = 'cancelled'
+    TICKET_CANCELLED = 'canceled'
     TICKET_EXPIRED = 'expired'
 
     TICKET_STATUS = [
         (TICKET_ISSUED, _('Issued')),
         (TICKET_USED, _('Used')),
-        (TICKET_CANCELLED, _('Cancelled')),
+        (TICKET_CANCELLED, _('Canceled')),
         (TICKET_EXPIRED, _('Expired')),
     ]
 
@@ -154,7 +213,11 @@ class Ticket(models.Model):
         super().save(*args, **kwargs)
 
     def generate_barcode(self):
-        return str(uuid.uuid4()).replace('-', '').upper()[:12]
+        import random
+        while True:
+            barcode = ''.join([str(random.randint(0, 9)) for _ in range(12)])
+            if not Ticket.objects.filter(barcode=barcode).exists():
+                return barcode
 
     def __str__(self):
         return f"Ticket {self.barcode}"

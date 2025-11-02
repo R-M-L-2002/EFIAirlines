@@ -4,44 +4,110 @@
 {% block title %}Detalle del vuelo {{ flight.flight_number }}{% endblock %}
 
 {% block content %}
-<h1>Detalle del vuelo {{ flight.flight_number }}</h1>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="fas fa-plane"></i> Detalle del vuelo {{ flight.flight_number }}
+        </h1>
+        
+        <!-- Adding edit and delete buttons for superusers -->
+        {% if user.is_superuser %}
+        <div>
+            <a href="{% url 'flights:edit_flight' flight.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit Flight
+            </a>
+            <a href="{% url 'flights:delete_flight' flight.id %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Delete Flight
+            </a>
+        </div>
+        {% endif %}
+    </div>
 
-<p><strong>Origen:</strong> {{ flight.origin }}</p>
-<p><strong>Destino:</strong> {{ flight.destination }}</p>
-<p><strong>Fecha y hora de salida:</strong> {{ flight.departure_date }}</p>
-<p><strong>Fecha y hora de llegada:</strong> {{ flight.arrival_date }}</p>
-<p><strong>Estado:</strong> {{ flight.get_status_display }}</p>
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong><i class="fas fa-map-marker-alt text-success"></i> Origen:</strong> {{ flight.origin }}</p>
+                    <p><strong><i class="fas fa-map-marker-alt text-danger"></i> Destino:</strong> {{ flight.destination }}</p>
+                    <p><strong><i class="fas fa-calendar"></i> Fecha y hora de salida:</strong> {{ flight.departure_date }}</p>
+                    <p><strong><i class="fas fa-calendar"></i> Fecha y hora de llegada:</strong> {{ flight.arrival_date }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong><i class="fas fa-info-circle"></i> Estado:</strong> 
+                        <span class="badge bg-{% if flight.status == 'scheduled' %}success{% elif flight.status == 'boarding' %}warning{% else %}secondary{% endif %}">
+                            {{ flight.get_status_display }}
+                        </span>
+                    </p>
+                    <p><strong><i class="fas fa-plane-departure"></i> Avión:</strong> {{ flight.airplane.model }}</p>
+                    <p><strong><i class="fas fa-dollar-sign"></i> Precio base:</strong> ${{ flight.base_price }}</p>
+                    <p><strong><i class="fas fa-clock"></i> Duración:</strong> {{ flight.duration }} minutos</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<h2>Asientos disponibles</h2>
-<ul>
-    <li>First Class: {{ available_counts.first_class }} de {{ seat_counts.first_class }}</li>
-    <li>Business Class: {{ available_counts.business_class }} de {{ seat_counts.business_class }}</li>
-    <li>Economy Class: {{ available_counts.economy_class }} de {{ seat_counts.economy_class }}</li>
-</ul>
+    <h2><i class="fas fa-chair"></i> Asientos disponibles</h2>
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">First Class</h5>
+                    <p class="card-text display-6">{{ available_counts.first_class }} / {{ seat_counts.first_class }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Business Class</h5>
+                    <p class="card-text display-6">{{ available_counts.business_class }} / {{ seat_counts.business_class }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Economy Class</h5>
+                    <p class="card-text display-6">{{ available_counts.economy_class }} / {{ seat_counts.economy_class }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<h2>Todos los asientos</h2>
-<table border="1" cellpadding="5">
-    <thead>
-        <tr>
-            <th>N° Asiento</th>
-            <th>Tipo</th>
-            <th>Estado</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for seat in seats %}
-        <tr>
-            <td>{{ seat.seat_number }}</td>
-            <td>{{ seat.get_type_display }}</td>
-            <td>{{ seat.get_status_display }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="3">No hay asientos cargados para este vuelo</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <h2><i class="fas fa-list"></i> Todos los asientos</h2>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>N° Asiento</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for seat in seats %}
+                <tr>
+                    <td>{{ seat.seat_number }}</td>
+                    <td>{{ seat.get_type_display }}</td>
+                    <td>
+                        <span class="badge bg-{% if seat.status == 'available' %}success{% elif seat.status == 'occupied' %}danger{% else %}warning{% endif %}">
+                            {{ seat.get_status_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center">No hay asientos cargados para este vuelo</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-<a href="{% url 'flights:list' %}">Volver al listado de vuelos</a>
+    <div class="mt-4">
+        <a href="{% url 'flights:list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al listado de vuelos
+        </a>
+    </div>
+</div>
 {% endblock %}

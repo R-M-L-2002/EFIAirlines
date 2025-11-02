@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Successful - Virtual Airline{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Success Message -->
+        <div class="card shadow border-success mb-4">
+            <div class="card-header bg-success text-white text-center">
+                <h2 class="mb-0">
+                    <i class="fas fa-check-circle"></i> Payment Successful!
+                </h2>
+            </div>
+            <div class="card-body text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-plane-departure text-success" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="text-success mb-3">Your Flight Has Been Successfully Reserved!</h3>
+                <p class="lead mb-4">
+                    Your electronic ticket has been generated and is ready for download.
+                </p>
+                <div class="alert alert-info">
+                    <p class="mb-0">
+                        <strong>Reservation Code:</strong> 
+                        <span class="fs-4 text-primary">{{ reservation.reservation_code }}</span>
+                    </p>
+                    <p class="mb-0">
+                        <strong>Ticket Number:</strong> 
+                        <span class="fs-5 text-secondary">{{ ticket.barcode }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ticket Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-ticket-alt"></i> Ticket Details</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h5 class="text-primary"><i class="fas fa-user"></i> Passenger Information</h5>
+                        <p class="mb-1"><strong>Name:</strong> {{ reservation.passenger.name }}</p>
+                        <p class="mb-1"><strong>Document:</strong> {{ reservation.passenger.get_document_type_display }}: {{ reservation.passenger.document }}</p>
+                        <p class="mb-0"><strong>Email:</strong> {{ reservation.passenger.email }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="text-primary"><i class="fas fa-plane"></i> Flight Information</h5>
+                        <p class="mb-1"><strong>Flight:</strong> {{ reservation.flight.flight_number }}</p>
+                        <p class="mb-1"><strong>Route:</strong> {{ reservation.flight.origin }} → {{ reservation.flight.destination }}</p>
+                        <p class="mb-0"><strong>Departure:</strong> {{ reservation.flight.departure_date|date:"F d, Y at H:i" }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h5 class="text-primary"><i class="fas fa-chair"></i> Seat Information</h5>
+                        <p class="mb-1"><strong>Seat Number:</strong> {{ reservation.seat.seat_number }}</p>
+                        <p class="mb-0"><strong>Seat Type:</strong> {{ reservation.seat.get_type_display }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="text-primary"><i class="fas fa-dollar-sign"></i> Payment Information</h5>
+                        <p class="mb-1"><strong>Total Paid:</strong> <span class="text-success fs-5">${{ reservation.total_price }}</span></p>
+                        <p class="mb-0"><strong>Payment Method:</strong> {{ reservation.get_payment_method_display|default:"Credit Card" }}</p>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Important:</strong> Please arrive at the airport at least 2 hours before departure time.
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center mb-4">
+            <a href="{% url 'reservations:download_ticket' reservation.reservation_code %}" class="btn btn-danger btn-lg">
+                <i class="fas fa-file-pdf"></i> Download Ticket (PDF)
+            </a>
+            <a href="{% url 'reservations:my_reservations' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-list"></i> View My Reservations
+            </a>
+            <a href="{% url 'flights:list' %}" class="btn btn-outline-secondary btn-lg">
+                <i class="fas fa-search"></i> Search More Flights
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -4,7 +4,7 @@ from apps.flights.models import Airplane, Flight
 class AirplaneForm(forms.ModelForm):
     class Meta:
         model = Airplane
-        fields = ['model', 'capacity', 'rows', 'columns', 'active']
+        fields = ['model', 'registration', 'capacity', 'rows', 'columns', 'active']
 
 
 class FlightForm(forms.ModelForm):
