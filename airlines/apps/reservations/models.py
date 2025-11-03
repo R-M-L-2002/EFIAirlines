@@ -99,35 +99,39 @@ class Reservation(models.Model):
             ['flight', 'passenger']  # Un pasajero no puede tener más de una reserva por vuelo
         ]
         ordering = ['-reservation_date']
-
+    
     def clean(self):
         """Validaciones personalizadas antes de guardar"""
         super().clean()
-        
+
         # Validar que el asiento pertenece al avión del vuelo
-        if self.seat and self.flight and self.seat.airplane != self.flight.airplane:
-            raise ValidationError({
-                'seat': _('The selected seat does not belong to the flight airplane.')
-            })
-        
-        # Validar que el asiento no esté en mantenimiento
-        if self.seat and self.seat.status == 'maintenance':
-            raise ValidationError({
-                'seat': _('The selected seat is under maintenance and cannot be reserved.')
-            })
-        
+        if hasattr(self, 'seat') and self.seat is not None and self.flight is not None: #hasattr es una función de Python que verifica si un objeto tiene un atributo específico
+            if self.seat.airplane != self.flight.airplane:                              #asi no me da error al confirmar una reserva
+                raise ValidationError({
+                    'seat': _('The selected seat does not belong to the flight airplane.')
+                })
+            # Validar que el asiento no esté en mantenimiento
+            if self.seat.status == 'maintenance':
+                raise ValidationError({
+                    'seat': _('The selected seat is under maintenance and cannot be reserved.')
+                })
+
         # Validar que el vuelo no haya partido
-        if self.flight and self.flight.departure_date < timezone.now():
-            raise ValidationError({
-                'flight': _('Cannot reserve a seat on a flight that has already departed.')
-            })
-        
+        if hasattr(self, 'flight') and self.flight is not None:
+            if self.flight.departure_date < timezone.now():
+                raise ValidationError({
+                    'flight': _('Cannot reserve a seat on a flight that has already departed.')
+                })
+
         # Validar duplicados: solo reservas activas, ignora canceladas
-        if Reservation.objects.filter(
-            flight=self.flight,
-            passenger=self.passenger
-        ).exclude(status=Reservation.STATUS_CANCELLED).exclude(pk=self.pk).exists():
-            raise ValidationError('You already have an active reservation for this flight.')
+        if hasattr(self, 'flight') and hasattr(self, 'passenger'):
+            if self.flight is not None and self.passenger is not None:
+                if Reservation.objects.filter(
+                    flight=self.flight,
+                    passenger=self.passenger
+                ).exclude(status=Reservation.STATUS_CANCELLED).exclude(pk=self.pk).exists():
+                    raise ValidationError('You already have an active reservation for this flight.')
+
 
     def save(self, *args, **kwargs):
         if not self.reservation_code:

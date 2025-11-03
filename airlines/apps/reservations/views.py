@@ -206,9 +206,9 @@ def confirm_and_pay_reservation(request, reservation_code):
             messages.info(request, 'La reserva ya ha sido pagada.')
             return redirect('reservations:detail', reservation_code=reservation_code)
 
-        # Procesar formulario POST
+            # Procesar formulario POST
         if request.method == 'POST':
-            form = ConfirmReservationForm(request.POST, instance=reservation)
+            form = ConfirmReservationForm(request.POST)
             if form.is_valid():
                 try:
                     # Confirmar reserva si está pendiente
@@ -231,12 +231,13 @@ def confirm_and_pay_reservation(request, reservation_code):
                 messages.error(request, 'Debe aceptar los términos y condiciones.')
 
         else:
-            form = ConfirmReservationForm(instance=reservation)
+            form = ConfirmReservationForm()
 
         return render(request, 'reservations/confirm.html', {
             'reservation': reservation,
             'form': form
         })
+
 
     except Exception as e:
         import traceback
