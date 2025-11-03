@@ -17,7 +17,7 @@ from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 
 from .forms import NewReservationForm, ConfirmReservationForm, CancelReservationForm
-from reservations.models import Reservation
+from .models import Reservation
 
 from services.reservation import ReservationService, TicketService
 from services.passenger import PassengerService
