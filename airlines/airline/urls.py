@@ -27,7 +27,12 @@ urlpatterns = [
     path('reservations/', include('apps.reservations.urls')), 
     path('reports/', include('apps.reports.urls')),     
     path('auth/', include('django.contrib.auth.urls')), 
+    
+    path('api/', include('api.urls')),
 ]
 
 if settings.DEBUG:
+    # Esta línea asume que tienes MEDIA_URL y MEDIA_ROOT configurados en settings.py
+    # Si no los tienes, esta línea no tendrá efecto o podría dar error.
+    # La agregaré igualmente ya que estaba en tu original.
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

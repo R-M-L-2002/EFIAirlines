@@ -42,6 +42,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
+    # Apps de REST Framework
+    'rest_framework',
+    'rest_framework.authtoken',
 
     # Apps de la aerolinea
     'apps.accounts.apps.AccountsConfig',
@@ -49,6 +52,11 @@ INSTALLED_APPS = [
     'apps.passengers.apps.PassengersConfig',
     'apps.reports.apps.ReportsConfig',
     'apps.reservations.apps.ReservationsConfig',
+    
+    # App de API
+    'api',
+
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -136,3 +144,29 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# AGREGADO: Configuración de Django REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ],
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
+    'DATE_FORMAT': '%Y-%m-%d',
+
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
