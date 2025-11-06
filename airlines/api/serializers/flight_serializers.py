@@ -7,16 +7,12 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 # Los modelos aún son necesarios para ModelSerializer (Meta class)
 from apps.flights.models import Flight, Airplane, Seat
 
-# NUEVO: Importar los servicios
 from services.flight import AirplaneService, FlightService
-# (Asegúrate que la ruta de importación 'apps.flights.services' sea correcta)
-
 
 class AirplaneSerializer(serializers.ModelSerializer):
     """Serializer para el modelo Airplane"""
     available_seats_count = serializers.IntegerField(source='available_seats', read_only=True)
     
-    # NUEVO: Instanciar el servicio
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.airplane_service = AirplaneService()
@@ -29,10 +25,6 @@ class AirplaneSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
-    # ELIMINADO: La validación de capacidad ahora está en el servicio.
-    # def validate(self, data): ...
-
-    # NUEVO: Sobrescribir create para usar el servicio
     def create(self, validated_data):
         try:
             return self.airplane_service.create_airplane(validated_data)
@@ -85,19 +77,15 @@ class FlightDetailSerializer(serializers.ModelSerializer):
     """
     airplane = AirplaneSerializer(read_only=True)
     airplane_id = serializers.PrimaryKeyRelatedField(
-        # MODIFICADO: Quitamos el queryset que consulta directo a la BD
-        # El servicio se encargará de validar que el ID del avión es válido.
-        queryset=Airplane.objects.none(), # Opcional: poner none() si solo validas en el servicio
-        # queryset=Airplane.objects.all(), # O mantenerlo para validación básica de DRF
+        queryset=Airplane.objects.none(),
         source='airplane',
         write_only=True,
-        required=False # Asumimos que no siempre se actualiza el avión
+        required=False # Asumir que no siempre se actualiza el avión
     )
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     available_seats_count = serializers.IntegerField(source='available_seats', read_only=True)
     managed_by_username = serializers.CharField(source='managed_by.username', read_only=True, allow_null=True)
 
-    # NUEVO: Instanciar el servicio
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.flight_service = FlightService()
@@ -113,10 +101,7 @@ class FlightDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'duration', 'created_at']
     
-    # ELIMINADO: La validación de fechas ahora está en el servicio.
-    # def validate(self, data): ...
 
-    # NUEVO: Sobrescribir update para usar el servicio
     def update(self, instance, validated_data):
         try:
             return self.flight_service.update_flight(instance.id, validated_data)
@@ -130,8 +115,7 @@ class FlightSerializer(serializers.ModelSerializer):
     """
     airplane_model = serializers.CharField(source='airplane.model', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    
-    # NUEVO: Instanciar el servicio
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.flight_service = FlightService()
@@ -147,10 +131,7 @@ class FlightSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'duration', 'created_at']
     
-    # ELIMINADO: La validación de fechas ahora está en el servicio.
-    # def validate(self, data): ...
 
-    # NUEVO: Sobrescribir create para usar el servicio
     def create(self, validated_data):
         try:
             return self.flight_service.create_flight(validated_data)
