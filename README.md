@@ -35,7 +35,7 @@ python manage.py migrate
 python manage.py createsuperuser
 
 # 8. Poblar la base de datos (Seed)
-Este comando cargará datos iniciales.
+# Este comando cargará datos iniciales.
 python scripts/seed_database.py
 
 # 8. Levantar el servidor de desarrollo
